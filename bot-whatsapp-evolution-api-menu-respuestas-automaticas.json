@@ -1,0 +1,111 @@
+{
+  "name": "Evolution API Simple FIXED",
+  "nodes": [
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=http://evolution-api:8080/message/sendText/{{ $json.instance }}",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "apikey",
+              "value": "MiClaveSecreta2026XYZ"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $json.number }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.text }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "3e148db1-a021-43f1-8a97-645983526480",
+      "name": "Enviar a WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        992,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body;\nconst number = body.data.key.remoteJid.split('@')[0];\nconst pushName = body.data.pushName || 'Usuario';\nconst messageText = body.data.message.conversation || body.data.message.extendedTextMessage?.text || 'multimedia';\nconst instance = body.instance;\nconst fromMe = body.data.key.fromMe;\n\n// Solo procesar mensajes recibidos (no los que enviamos)\nif (fromMe) {\n  return [];\n}\n\n// Detectar comando y crear respuesta\nlet response = '';\nconst msg = messageText.toLowerCase();\n\nif (msg.match(/hola|hi|hello|hey|buenos dias|buenas tardes/)) {\n  response = `Hola ${pushName}! 👋\\n\\nBienvenido! Soy tu asistente virtual.\\n\\nEscribe *menu* para ver las opciones.`;\n} else if (msg.match(/menu|opciones|ayuda/)) {\n  response = `📋 MENU PRINCIPAL\\n\\nHola ${pushName}!\\n\\n1️⃣ Escribe *precios* - Ver planes\\n2️⃣ Escribe *horario* - Ver horarios\\n3️⃣ Escribe *contacto* - Info de contacto\\n\\nHazme cualquier pregunta!`;\n} else if (msg.match(/precio|costo|cuanto|plan/)) {\n  response = `💰 NUESTROS PLANES\\n\\nHola ${pushName}!\\n\\n✨ PLAN BASICO - $29.99/mes\\n• Hasta 1000 mensajes\\n• Soporte email\\n\\n🚀 PLAN PRO - $79.99/mes\\n• Mensajes ilimitados\\n• Soporte prioritario\\n\\n💎 PLAN EMPRESA - Personalizado\\n• Todo lo anterior\\n• Soporte 24/7\\n\\nEscribe *contacto* para mas info`;\n} else if (msg.match(/horario|hora|cuando/)) {\n  response = `🕐 HORARIOS DE ATENCION\\n\\nHola ${pushName}!\\n\\n📅 Lunes a Viernes\\n⏰ 9:00 AM - 6:00 PM\\n\\n📅 Sabados\\n⏰ 10:00 AM - 2:00 PM\\n\\n📅 Domingos: Cerrado\\n\\n💬 Este bot esta disponible 24/7`;\n} else if (msg.match(/contacto|telefono|email|direccion/)) {\n  response = `📞 INFORMACION DE CONTACTO\\n\\nHola ${pushName}!\\n\\n📱 WhatsApp: +593 98 765 4321\\n📧 Email: contacto@tuempresa.com\\n🌐 Web: www.tuempresa.com\\n\\n📍 Direccion:\\nAv Principal 123\\nQuito, Ecuador\\n\\nEscribe *menu* para mas opciones`;\n} else {\n  response = `Hola ${pushName}!\\n\\nGracias por tu mensaje: \"${messageText}\"\\n\\nUn asesor te contactara pronto.\\n\\nEscribe *menu* para ver opciones automaticas.`;\n}\n\nreturn {\n  json: {\n    number: number,\n    text: response,\n    instance: instance,\n    pushName: pushName\n  }\n};"
+      },
+      "id": "43375e33-0921-4337-ae1d-5be073fa7350",
+      "name": "Procesar Mensaje",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        768,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "evolution-in",
+        "options": {}
+      },
+      "id": "f35ae093-9c28-42f4-875f-0915275c0775",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        544,
+        208
+      ],
+      "webhookId": "eb35e693-a25c-47d9-942a-a17ca2b3f1dd"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Procesar Mensaje": {
+      "main": [
+        [
+          {
+            "node": "Enviar a WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Procesar Mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "6ad8aba2-a160-45f3-a6b1-707bbd304883",
+  "meta": {
+    "instanceId": "04fa49b5342683f3459c11df7acab88fd9d5826423bbee4173c0a22e9e21410c"
+  },
+  "id": "tmzQBNYqEHqfqzcI4xb73",
+  "tags": []
+}

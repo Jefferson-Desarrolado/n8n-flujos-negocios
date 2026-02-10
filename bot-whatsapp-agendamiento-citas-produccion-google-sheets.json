@@ -1,0 +1,2729 @@
+{
+  "name": "WhatsApp Bot Citas - PRODUCCIÓN",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "evolution-in",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -2080,
+        2208
+      ],
+      "id": "a89e1ad7-cc5b-4c77-bac3-2649a018ceec",
+      "name": "📥 Webhook Evolution",
+      "webhookId": "7a292d4b-ed11-4221-859e-881cbe311ff1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.body.event }}",
+              "rightValue": "messages.upsert",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            },
+            {
+              "leftValue": "={{ $json.body.data.message?.conversation || $json.body.data.message?.extendedTextMessage?.text }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty"
+              }
+            },
+            {
+              "leftValue": "={{ $json.body.data.key.fromMe }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [
+        -1872,
+        2208
+      ],
+      "id": "9d5cb7b3-3c81-43e4-a3e0-90e37ab6bf2c",
+      "name": "🔍 Filtrar Mensajes"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "phone_number",
+              "value": "={{ $json.body.data.key.remoteJid.split('@')[0] }}",
+              "type": "string"
+            },
+            {
+              "name": "mensaje_usuario",
+              "value": "={{ ($json.body.data.message?.conversation || $json.body.data.message?.extendedTextMessage?.text || '').trim().toLowerCase() }}",
+              "type": "string"
+            },
+            {
+              "name": "nombre_usuario",
+              "value": "={{ $json.body.data.pushName || 'Usuario' }}",
+              "type": "string"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{ $now.toISO() }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1680,
+        2208
+      ],
+      "id": "250058a5-9a63-457d-82b1-45da1dcbc637",
+      "name": "📋 Extraer Datos"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1vuBSymOWedrE-ieCbiPXbQgH6l-HXLhNr-Z86KL1hJg",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "estado_conversacion"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "phone_number ": "={{ $json.phone_number }}",
+            "nombre ": "={{ $json.nombre_usuario }}",
+            "estado          ": "menu_inicial",
+            "opcion_elegida ": "=\"\"",
+            "temp_fecha": "={{ $json.timestamp }}"
+          },
+          "matchingColumns": [
+            "phone_number "
+          ],
+          "schema": [
+            {
+              "id": "phone_number ",
+              "displayName": "phone_number ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nombre ",
+              "displayName": "nombre ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "estado          ",
+              "displayName": "estado          ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "opcion_elegida ",
+              "displayName": "opcion_elegida ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "temp_fecha",
+              "displayName": "temp_fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -1472,
+        2208
+      ],
+      "id": "728e412a-3470-4b44-9361-ab6fc904b241",
+      "name": "💾 Crear/Actualizar Usuario",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YK24ixs7cH2x2oyZ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1vuBSymOWedrE-ieCbiPXbQgH6l-HXLhNr-Z86KL1hJg",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "estado_conversacion"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "phone_number ",
+              "lookupValue": "={{ $('📋 Extraer Datos').item.json.phone_number }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -1280,
+        2208
+      ],
+      "id": "b06ff0b9-09d6-481c-bb26-8cbb5d51d84e",
+      "name": "📖 Leer Estado Usuario",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YK24ixs7cH2x2oyZ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "estado_actual",
+              "value": "={{ $json.estado || 'menu_inicial' }}",
+              "type": "string"
+            },
+            {
+              "name": "phone_number",
+              "value": "={{ $('📋 Extraer Datos').item.json.phone_number }}",
+              "type": "string"
+            },
+            {
+              "name": "mensaje_usuario",
+              "value": "={{ $('📋 Extraer Datos').item.json.mensaje_usuario }}",
+              "type": "string"
+            },
+            {
+              "name": "nombre_usuario",
+              "value": "={{ $('📋 Extraer Datos').item.json.nombre_usuario }}",
+              "type": "string"
+            },
+            {
+              "name": "temp_fecha",
+              "value": "={{ $json.temp_fecha || '' }}",
+              "type": "string"
+            },
+            {
+              "name": "temp_hora",
+              "value": "={{ $json.temp_hora || '' }}",
+              "type": "string"
+            },
+            {
+              "name": "temp_servicio",
+              "value": "={{ $json.temp_servicio || '' }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -1072,
+        2208
+      ],
+      "id": "6583b916-26c4-4f46-aa00-714ea4223261",
+      "name": "🔗 Preparar Contexto"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "leftValue": "={{ $json.mensaje_usuario }}",
+              "rightValue": "menu",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "id": "54f0d928-520d-4873-bcec-f5ddc605ec1c"
+            },
+            {
+              "leftValue": "={{ $json.mensaje_usuario }}",
+              "rightValue": "menú",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "id": "f5548a08-10e0-4342-b6fe-f4130163f87f"
+            },
+            {
+              "leftValue": "={{ $json.mensaje_usuario }}",
+              "rightValue": "volver",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "id": "61e8238b-e6f1-4f1a-817d-06180d609b92"
+            },
+            {
+              "leftValue": "={{ $json.mensaje_usuario }}",
+              "rightValue": "inicio",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              },
+              "id": "f04cd23b-9114-481e-bcb6-26af3c14ecea"
+            }
+          ],
+          "combinator": "or"
+        },
+        "looseTypeValidation": true,
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.1,
+      "position": [
+        -880,
+        2208
+      ],
+      "id": "c2f22828-0937-4e55-8988-e4041e4369e2",
+      "name": "🔄 ¿Reset a Menú?"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1vuBSymOWedrE-ieCbiPXbQgH6l-HXLhNr-Z86KL1hJg",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "estado_conversacion"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": 0,
+            "phone_number ": "={{ $('🔗 Preparar Contexto').item.json.phone_number }}",
+            "estado          ": "menu_inicial"
+          },
+          "matchingColumns": [
+            "phone_number "
+          ],
+          "schema": [
+            {
+              "id": "phone_number ",
+              "displayName": "phone_number ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nombre ",
+              "displayName": "nombre ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "estado          ",
+              "displayName": "estado          ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "opcion_elegida ",
+              "displayName": "opcion_elegida ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "temp_fecha",
+              "displayName": "temp_fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        528,
+        3264
+      ],
+      "id": "336a6b92-0b61-4c4d-b93d-5d3f8405bac5",
+      "name": "🔄 Reset Estado",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YK24ixs7cH2x2oyZ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "estado_actual",
+              "value": "menu_inicial",
+              "type": "string"
+            },
+            {
+              "name": "phone_number",
+              "value": "={{ $json.phone_number }}",
+              "type": "string"
+            },
+            {
+              "name": "nombre_usuario",
+              "value": "={{ $json.nombre_usuario }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -656,
+        2112
+      ],
+      "id": "b8db26c2-346f-42d9-bc1a-387f2bfc69d2",
+      "name": "🔄 Estado→menu_inicial"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.estado_actual }}",
+                    "rightValue": "menu_inicial",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "menu_inicial"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.estado_actual }}",
+                    "rightValue": "esperando_opcion",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "esperando_opcion"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.estado_actual }}",
+                    "rightValue": "esperando_fecha",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "esperando_fecha"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.estado_actual }}",
+                    "rightValue": "esperando_hora",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "esperando_hora"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.estado_actual }}",
+                    "rightValue": "esperando_servicio",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "esperando_servicio"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.estado_actual }}",
+                    "rightValue": "confirmando_cita",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ]
+              },
+              "renameOutput": true,
+              "outputKey": "confirmando_cita"
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": "extra"
+        }
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -400,
+        2112
+      ],
+      "id": "24977609-0bbe-4319-9c47-323e6d586639",
+      "name": "🔀 Switch Estado"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution-api:8080/message/sendText/Jefferson",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "apikey",
+              "value": "MiClaveSecreta2026XYZ"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.phone_number }}\",\n  \"text\": \"¡Hola {{ $json.nombre_usuario }}! 👋\\n\\n*Bienvenido a DevsManager*\\n\\nSoy Jefferson, ayudo a negocios a automatizar procesos con IA.\\n\\n¿Qué necesitas hoy?\\n\\n1️⃣ Consultar cita\\n2️⃣ Agendar cita\\n3️⃣ Servicios\\n4️⃣ Ubicación\\n\\nResponde con el *número* de la opción que prefieras.\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -208,
+        1824
+      ],
+      "id": "fd29f799-2d7b-40f0-983c-cab4e2c65c34",
+      "name": "📤 Enviar Menú"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1vuBSymOWedrE-ieCbiPXbQgH6l-HXLhNr-Z86KL1hJg",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "estado_conversacion"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": 0,
+            "phone_number ": "={{ $('🔗 Preparar Contexto').item.json.phone_number }}",
+            "estado          ": "esperando_fecha",
+            "opcion_elegida ": "\"\"",
+            "temp_fecha": "\"\""
+          },
+          "matchingColumns": [
+            "phone_number "
+          ],
+          "schema": [
+            {
+              "id": "phone_number ",
+              "displayName": "phone_number ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nombre ",
+              "displayName": "nombre ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "estado          ",
+              "displayName": "estado          ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "opcion_elegida ",
+              "displayName": "opcion_elegida ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "temp_fecha",
+              "displayName": "temp_fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        80,
+        1760
+      ],
+      "id": "c6e3e4ea-9741-4fb8-9e74-696195108d84",
+      "name": "💾 Estado→esperando_opcion",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YK24ixs7cH2x2oyZ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.mensaje_usuario }}",
+                    "rightValue": "1",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "leftValue": "={{ $json.mensaje_usuario }}",
+                    "rightValue": "consultar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "or"
+              },
+              "renameOutput": true,
+              "outputKey": "consultar"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.mensaje_usuario }}",
+                    "rightValue": "2",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "leftValue": "={{ $json.mensaje_usuario }}",
+                    "rightValue": "agendar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "or"
+              },
+              "renameOutput": true,
+              "outputKey": "agendar"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.mensaje_usuario }}",
+                    "rightValue": "3",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "leftValue": "={{ $json.mensaje_usuario }}",
+                    "rightValue": "servicio",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "or"
+              },
+              "renameOutput": true,
+              "outputKey": "servicios"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.mensaje_usuario }}",
+                    "rightValue": "4",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "leftValue": "={{ $json.mensaje_usuario }}",
+                    "rightValue": "ubicacion",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "or"
+              },
+              "renameOutput": true,
+              "outputKey": "ubicacion"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -176,
+        2000
+      ],
+      "id": "763aa1b3-7735-417e-bc0d-e360bee32d52",
+      "name": "🎯 Detectar Opción"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1pMTLvFjHPcBQD0elT-Kbbuh29zMY61JhwK5Z9eDJtZc",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "citas_agendadas"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "phone_number ",
+              "lookupValue": "={{ $('🔗 Preparar Contexto').item.json.phone_number }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        128,
+        1584
+      ],
+      "id": "431a3ec6-04d3-4540-a41c-68f5f1dedb52",
+      "name": "🔍 Buscar Citas",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YK24ixs7cH2x2oyZ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $input.all().length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.1,
+      "position": [
+        320,
+        1728
+      ],
+      "id": "ee293670-6d5a-4595-91e4-6c6c8fe0f103",
+      "name": "❓ Tiene Citas?"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution-api:8080/message/sendText/Jefferson",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "apikey",
+              "value": "MiClaveSecreta2026XYZ"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $('🔗 Preparar Contexto').item.json.phone_number }}\",\n  \"text\": \"📅 *Tus citas agendadas:*\\n\\n{{ $input.all().map((c, i) => `${i+1}. 📆 ${c.json.fecha} - ⏰ ${c.json.hora}\\n   📝 ${c.json.servicio}\\n   ✅ Estado: ${c.json.estado}\\n`).join('\\n') }}\\nEscribe *menú* para volver.\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        528,
+        1952
+      ],
+      "id": "962a3015-13b7-447e-9bc5-d2a93227d64e",
+      "name": "📤 Mostrar Citas"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution-api:8080/message/sendText/Jefferson",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "apikey",
+              "value": "MiClaveSecreta2026XYZ"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $('🔗 Preparar Contexto').item.json.phone_number }}\",\n  \"text\": \"😔 No tienes citas agendadas.\\n\\n¿Quieres agendar una?\\n\\nEscribe *2* o *agendar*.\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        528,
+        2064
+      ],
+      "id": "0f564d1e-1607-4db3-8d9e-6aa5f36f3c30",
+      "name": "📤 Sin Citas"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution-api:8080/message/sendText/Jefferson",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "apikey",
+              "value": "MiClaveSecreta2026XYZ"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $('🔗 Preparar Contexto').item.json.phone_number }}\",\n  \"text\": \"📅 ¡Perfecto! Vamos a agendar tu cita.\\n\\n¿Qué fecha prefieres?\\n\\nEscribe en formato: *DD/MM/YYYY*\\nEjemplo: 15/02/2026\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        96,
+        1920
+      ],
+      "id": "ccfd8939-2052-4f39-aa48-265d725f1adc",
+      "name": "📤 Pedir Fecha"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1vuBSymOWedrE-ieCbiPXbQgH6l-HXLhNr-Z86KL1hJg",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "estado_conversacion"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": 0,
+            "phone_number ": "={{ $('🔗 Preparar Contexto').item.json.phone_number }}",
+            "nombre ": "\"\"",
+            "estado          ": "\"\"",
+            "opcion_elegida ": "\"\"",
+            "temp_fecha": "\"\""
+          },
+          "matchingColumns": [
+            "phone_number "
+          ],
+          "schema": [
+            {
+              "id": "phone_number ",
+              "displayName": "phone_number ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nombre ",
+              "displayName": "nombre ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "estado          ",
+              "displayName": "estado          ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "opcion_elegida ",
+              "displayName": "opcion_elegida ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "temp_fecha",
+              "displayName": "temp_fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        320,
+        1920
+      ],
+      "id": "69c71897-e9e5-4f05-a9ae-36c62bc2d232",
+      "name": "💾 Estado→esperando_fecha",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YK24ixs7cH2x2oyZ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1pfaOsE9rjd9PHStqX1ogg8pn2kG3anLbThy6fs7vSBA",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "servicios_disponibles"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        944,
+        2272
+      ],
+      "id": "09572e66-b75d-46d2-9ea6-63cba080806f",
+      "name": "📖 Leer Servicios",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YK24ixs7cH2x2oyZ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution-api:8080/message/sendText/Jefferson",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "apikey",
+              "value": "MiClaveSecreta2026XYZ"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $('🔗 Preparar Contexto').item.json.phone_number }}\",\n  \"text\": \"💼 *Nuestros Servicios:*\\n\\n{{ $input.all().map((s, i) => `${i+1}. *${s.json.nombre_servicio}*\\n   ⏱️ ${s.json.duracion_minutos} min\\n   💰 ${s.json.precio}\\n   📝 ${s.json.descripcion}\\n`).join('\\n') }}¿Te interesa agendar?\\nEscribe *2* o *agendar*.\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        336,
+        2144
+      ],
+      "id": "9b772baa-52e1-4b92-8286-8babd748b9c0",
+      "name": "📤 Mostrar Servicios"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution-api:8080/message/sendText/Jefferson",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "apikey",
+              "value": "MiClaveSecreta2026XYZ"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $('🔗 Preparar Contexto').item.json.phone_number }}\",\n  \"text\": \"📍 *Nuestra Ubicación:*\\n\\nCalle Principal #123\\nQuito, Ecuador\\n\\n🕐 Horario:\\nLun-Vie: 9:00-18:00\\nSáb: 10:00-14:00\\n\\n📞 +593 999 999 999\\n\\nEscribe *menú* para volver.\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        96,
+        2256
+      ],
+      "id": "77e15824-7aee-446f-a06d-46a4bdc76f9e",
+      "name": "📤 Ubicación"
+    },
+    {
+      "parameters": {
+        "jsCode": "const fecha = $input.item.json.mensaje_usuario;\nconst regex = /^(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})$/;\nconst match = fecha.match(regex);\n\nif (!match) {\n  return {\n    json: {\n      valida: false,\n      mensaje: \"Formato inválido. Usa DD/MM/YYYY\",\n      phone_number: $input.item.json.phone_number\n    }\n  };\n}\n\nconst [_, dia, mes, año] = match;\nconst fechaObj = new Date(año, mes - 1, dia);\n\nif (fechaObj.getDate() != dia || fechaObj.getMonth() != mes - 1) {\n  return {\n    json: {\n      valida: false,\n      mensaje: \"Fecha inválida\",\n      phone_number: $input.item.json.phone_number\n    }\n  };\n}\n\nconst hoy = new Date();\nhoy.setHours(0, 0, 0, 0);\n\nif (fechaObj < hoy) {\n  return {\n    json: {\n      valida: false,\n      mensaje: \"No puedes agendar en el pasado\",\n      phone_number: $input.item.json.phone_number\n    }\n  };\n}\n\nreturn {\n  json: {\n    valida: true,\n    fecha_formateada: fecha,\n    phone_number: $input.item.json.phone_number,\n    nombre_usuario: $input.item.json.nombre_usuario\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -80,
+        2304
+      ],
+      "id": "2b4c3b63-0be5-461d-96e8-7280844c5342",
+      "name": "✅ Validar Fecha"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.valida }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.1,
+      "position": [
+        80,
+        2064
+      ],
+      "id": "d7d0c058-e7a3-4925-a867-210bf62e1dbd",
+      "name": "❓ Fecha Válida?"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1vuBSymOWedrE-ieCbiPXbQgH6l-HXLhNr-Z86KL1hJg",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "estado_conversacion"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "temp_fecha": "={{ $json.fecha_formateada }}",
+            "row_number": 0,
+            "phone_number ": "={{ $json.phone_number }}",
+            "estado          ": "esperando_hora"
+          },
+          "matchingColumns": [
+            "phone_number "
+          ],
+          "schema": [
+            {
+              "id": "phone_number ",
+              "displayName": "phone_number ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nombre ",
+              "displayName": "nombre ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "estado          ",
+              "displayName": "estado          ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "opcion_elegida ",
+              "displayName": "opcion_elegida ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "temp_fecha",
+              "displayName": "temp_fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        672,
+        2224
+      ],
+      "id": "c93c0dfd-67b5-4859-9b17-b4eb0863b28d",
+      "name": "💾 Guardar Fecha",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YK24ixs7cH2x2oyZ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution-api:8080/message/sendText/Jefferson",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "apikey",
+              "value": "MiClaveSecreta2026XYZ"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.phone_number }}\",\n  \"text\": \"✅ Fecha guardada: {{ $json.fecha_formateada }}\\n\\n⏰ ¿A qué hora prefieres tu cita?\\n\\nEscribe la hora en formato 24h:\\nEjemplo: *10:00* o *14:30*\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        272,
+        2416
+      ],
+      "id": "4e8ca22d-ac50-43b5-aa03-c0d590990b89",
+      "name": "📤 Pedir Hora"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution-api:8080/message/sendText/Jefferson",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "apikey",
+              "value": "MiClaveSecreta2026XYZ"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.phone_number }}\",\n  \"text\": \"❌ {{ $json.mensaje }}\\n\\nPor favor, inténtalo de nuevo con formato DD/MM/YYYY\\nEjemplo: 15/02/2026\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        304,
+        2560
+      ],
+      "id": "8d95cf5f-9a52-4ef4-9dea-60c94230c75b",
+      "name": "❌ Fecha Inválida"
+    },
+    {
+      "parameters": {
+        "jsCode": "const hora = $input.item.json.mensaje_usuario;\nconst regex = /^([0-1]?[0-9]|2[0-3]):([0-5][0-9])$/;\nconst match = hora.match(regex);\n\nif (!match) {\n  return {\n    json: {\n      valida: false,\n      mensaje: \"Formato inválido. Usa HH:MM (24h)\",\n      phone_number: $input.item.json.phone_number\n    }\n  };\n}\n\nconst [_, horas, minutos] = match;\nconst horaNum = parseInt(horas);\n\nif (horaNum < 9 || horaNum >= 18) {\n  return {\n    json: {\n      valida: false,\n      mensaje: \"Horario: 9:00-18:00\",\n      phone_number: $input.item.json.phone_number\n    }\n  };\n}\n\nreturn {\n  json: {\n    valida: true,\n    hora_formateada: `${horas.padStart(2, '0')}:${minutos}`,\n    phone_number: $input.item.json.phone_number,\n    temp_fecha: $input.item.json.temp_fecha\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -144,
+        2496
+      ],
+      "id": "8a9ef87a-df32-4c95-9227-59e2aeff8c5c",
+      "name": "✅ Validar Hora"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $json.valida }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.1,
+      "position": [
+        80,
+        2480
+      ],
+      "id": "38f601fb-a8f5-449e-a654-1a687af7e50b",
+      "name": "❓ Hora Válida?"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1vuBSymOWedrE-ieCbiPXbQgH6l-HXLhNr-Z86KL1hJg",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "estado_conversacion"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": 0,
+            "phone_number ": "={{ $json.phone_number }}",
+            "estado          ": "esperando_servicio",
+            "temp_fecha": "={{ $json.hora_formateada }}"
+          },
+          "matchingColumns": [
+            "phone_number "
+          ],
+          "schema": [
+            {
+              "id": "phone_number ",
+              "displayName": "phone_number ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nombre ",
+              "displayName": "nombre ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "estado          ",
+              "displayName": "estado          ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "opcion_elegida ",
+              "displayName": "opcion_elegida ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "temp_fecha",
+              "displayName": "temp_fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        640,
+        2496
+      ],
+      "id": "9f69aa7a-6bef-47c3-a727-ce82e161b4f3",
+      "name": "💾 Guardar Hora",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YK24ixs7cH2x2oyZ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution-api:8080/message/sendText/Jefferson",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "apikey",
+              "value": "MiClaveSecreta2026XYZ"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $('💾 Guardar Hora').item.json.phone_number }}\",\n  \"text\": \"✅ Hora guardada: {{ $('💾 Guardar Hora').item.json.temp_hora }}\\n\\n💼 ¿Qué servicio deseas?\\n\\n{{ $input.all().map((s, i) => `${s.json.id}. ${s.json.nombre_servicio} - ${s.json.precio} (${s.json.duracion_minutos} min)`).join('\\n') }}\\n\\nResponde con el *número* del servicio.\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        1216,
+        2336
+      ],
+      "id": "f81b8630-f0ac-497b-a9b9-6e29836917a8",
+      "name": "📤 Pedir Servicio"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution-api:8080/message/sendText/Jefferson",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "apikey",
+              "value": "MiClaveSecreta2026XYZ"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.phone_number }}\",\n  \"text\": \"❌ {{ $json.mensaje }}\\n\\nInténtalo nuevamente con formato HH:MM\\nEjemplo: 10:00 o 14:30\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        320,
+        2704
+      ],
+      "id": "05d24340-b413-44ce-b67d-0d1a09f83472",
+      "name": "❌ Hora Inválida"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1pfaOsE9rjd9PHStqX1ogg8pn2kG3anLbThy6fs7vSBA",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "servicios_disponibles"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "id ",
+              "lookupValue": "={{ $('🔗 Preparar Contexto').item.json.mensaje_usuario }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        -176,
+        2688
+      ],
+      "id": "490c6ad8-dcde-443a-a133-650f5ba01bed",
+      "name": "🔍 Buscar Servicio",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YK24ixs7cH2x2oyZ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "conditions": [
+            {
+              "leftValue": "={{ $input.all().length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.1,
+      "position": [
+        64,
+        2656
+      ],
+      "id": "42f3218d-876e-4c25-b9df-d09d9e5a0dae",
+      "name": "❓ Servicio Válido?"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "name": "servicio_nombre",
+              "value": "={{ $json.nombre_servicio }}",
+              "type": "string"
+            },
+            {
+              "name": "servicio_precio",
+              "value": "={{ $json.precio }}",
+              "type": "string"
+            },
+            {
+              "name": "servicio_duracion",
+              "value": "={{ $json.duracion_minutos }}",
+              "type": "string"
+            },
+            {
+              "name": "phone_number",
+              "value": "={{ $('🔗 Preparar Contexto').item.json.phone_number }}",
+              "type": "string"
+            },
+            {
+              "name": "temp_fecha",
+              "value": "={{ $('🔗 Preparar Contexto').item.json.temp_fecha }}",
+              "type": "string"
+            },
+            {
+              "name": "temp_hora",
+              "value": "={{ $('🔗 Preparar Contexto').item.json.temp_hora }}",
+              "type": "string"
+            },
+            {
+              "name": "nombre_usuario",
+              "value": "={{ $('🔗 Preparar Contexto').item.json.nombre_usuario }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        352,
+        2864
+      ],
+      "id": "c5d6c23a-0254-4985-84b5-7b68d119ef0a",
+      "name": "📦 Preparar Confirmación"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution-api:8080/message/sendText/Jefferson",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "apikey",
+              "value": "MiClaveSecreta2026XYZ"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.phone_number }}\",\n  \"text\": \"📋 *Resumen de tu cita:*\\n\\n👤 Nombre: {{ $json.nombre_usuario }}\\n📅 Fecha: {{ $json.temp_fecha }}\\n⏰ Hora: {{ $json.temp_hora }}\\n💼 Servicio: {{ $json.servicio_nombre }}\\n💰 Precio: {{ $json.servicio_precio }}\\n⏱️ Duración: {{ $json.servicio_duracion }} min\\n\\n¿Confirmas la cita?\\nResponde *SI* o *NO*\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        576,
+        2704
+      ],
+      "id": "605f5dbe-1f29-42b2-b94c-7fa770b332bf",
+      "name": "📤 Pedir Confirmación"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1vuBSymOWedrE-ieCbiPXbQgH6l-HXLhNr-Z86KL1hJg",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "estado_conversacion",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1vuBSymOWedrE-ieCbiPXbQgH6l-HXLhNr-Z86KL1hJg/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": 0,
+            "phone_number ": "={{ $('📦 Preparar Confirmación').item.json.phone_number }}",
+            "estado          ": "confirmando_cita",
+            "temp_servicio": "={{ $('📦 Preparar Confirmación').item.json.servicio_nombre }}"
+          },
+          "matchingColumns": [
+            "phone_number "
+          ],
+          "schema": [
+            {
+              "id": "phone_number ",
+              "displayName": "phone_number ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nombre ",
+              "displayName": "nombre ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "estado          ",
+              "displayName": "estado          ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "opcion_elegida ",
+              "displayName": "opcion_elegida ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "temp_fecha",
+              "displayName": "temp_fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "temp_servicio",
+              "displayName": "temp_servicio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        992,
+        2672
+      ],
+      "id": "972b0160-96aa-4e07-8558-44e57437f1b3",
+      "name": "💾 Estado→confirmando",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YK24ixs7cH2x2oyZ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution-api:8080/message/sendText/Jefferson",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "apikey",
+              "value": "MiClaveSecreta2026XYZ"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $('🔗 Preparar Contexto').item.json.phone_number }}\",\n  \"text\": \"❌ Servicio no válido.\\n\\nPor favor, elige un número del 1 al 5.\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        496,
+        3024
+      ],
+      "id": "e95d51c6-c1cf-4413-8dab-8c41e9bfcff3",
+      "name": "❌ Servicio Inválido"
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.mensaje_usuario }}",
+                    "rightValue": "si",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "leftValue": "={{ $json.mensaje_usuario }}",
+                    "rightValue": "sí",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "leftValue": "={{ $json.mensaje_usuario }}",
+                    "rightValue": "confirmo",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  },
+                  {
+                    "leftValue": "={{ $json.mensaje_usuario }}",
+                    "rightValue": "ok",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "or"
+              },
+              "renameOutput": true,
+              "outputKey": "confirmar"
+            },
+            {
+              "conditions": {
+                "conditions": [
+                  {
+                    "leftValue": "={{ $json.mensaje_usuario }}",
+                    "rightValue": "no",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  },
+                  {
+                    "leftValue": "={{ $json.mensaje_usuario }}",
+                    "rightValue": "cancelar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "contains"
+                    }
+                  }
+                ],
+                "combinator": "or"
+              },
+              "renameOutput": true,
+              "outputKey": "cancelar"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        -128,
+        2896
+      ],
+      "id": "3e8491b3-87cb-49cc-b6d8-e62b239f0f9a",
+      "name": "🔀 Switch Confirmación"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1pMTLvFjHPcBQD0elT-Kbbuh29zMY61JhwK5Z9eDJtZc",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "citas_agendadas"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "estado": "confirmada",
+            "phone_number ": "={{ $('🔗 Preparar Contexto').item.json.phone_number }}",
+            "nombre ": "={{ $('🔗 Preparar Contexto').item.json.nombre_usuario }}",
+            "fecha      ": "={{ $('🔗 Preparar Contexto').item.json.temp_fecha }}",
+            "hora  ": "={{ $('🔗 Preparar Contexto').item.json.temp_hora }}",
+            "servicio     ": "=servicio → {{ $('🔗 Preparar Contexto').item.json.temp_servicio }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "id ",
+              "displayName": "id ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "phone_number ",
+              "displayName": "phone_number ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nombre ",
+              "displayName": "nombre ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "fecha      ",
+              "displayName": "fecha      ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "hora  ",
+              "displayName": "hora  ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "servicio     ",
+              "displayName": "servicio     ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        96,
+        2880
+      ],
+      "id": "e05c9e21-462b-4eff-ad4f-942d31d5cc3c",
+      "name": "💾 GUARDAR CITA",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YK24ixs7cH2x2oyZ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution-api:8080/message/sendText/Jefferson",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "apikey",
+              "value": "MiClaveSecreta2026XYZ"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $('🔗 Preparar Contexto').item.json.phone_number }}\",\n  \"text\": \"✅ *¡Cita confirmada!*\\n\\n📅 {{ $('🔗 Preparar Contexto').item.json.temp_fecha }} a las {{ $('🔗 Preparar Contexto').item.json.temp_hora }}\\n💼 {{ $('🔗 Preparar Contexto').item.json.temp_servicio }}\\n\\nTe esperamos. 🎉\\n\\nEscribe *menú* si necesitas algo más.\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        656,
+        2896
+      ],
+      "id": "ab628d20-1c35-4836-b468-1219c12c0f9e",
+      "name": "✅ Cita Confirmada"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution-api:8080/message/sendText/Jefferson",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "apikey",
+              "value": "MiClaveSecreta2026XYZ"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $('🔗 Preparar Contexto').item.json.phone_number }}\",\n  \"text\": \"❌ Cita cancelada.\\n\\nEscribe *menú* cuando quieras agendar.\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        96,
+        3232
+      ],
+      "id": "b9f3a5f4-b1aa-417f-8239-f3a19ffa5a02",
+      "name": "❌ Cita Cancelada"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1vuBSymOWedrE-ieCbiPXbQgH6l-HXLhNr-Z86KL1hJg",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "estado_conversacion"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "row_number": 0,
+            "phone_number ": "={{ $('🔗 Preparar Contexto').item.json.phone_number }}",
+            "estado          ": "menu_inicial"
+          },
+          "matchingColumns": [
+            "phone_number "
+          ],
+          "schema": [
+            {
+              "id": "phone_number ",
+              "displayName": "phone_number ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nombre ",
+              "displayName": "nombre ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "estado          ",
+              "displayName": "estado          ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "opcion_elegida ",
+              "displayName": "opcion_elegida ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "temp_fecha",
+              "displayName": "temp_fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        336,
+        3440
+      ],
+      "id": "8ae139af-17a1-48e3-8417-56822b23b079",
+      "name": "🔄 Reset Estado (Cancelar)",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YK24ixs7cH2x2oyZ",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "📥 Webhook Evolution": {
+      "main": [
+        [
+          {
+            "node": "🔍 Filtrar Mensajes",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Filtrar Mensajes": {
+      "main": [
+        [
+          {
+            "node": "📋 Extraer Datos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📋 Extraer Datos": {
+      "main": [
+        [
+          {
+            "node": "💾 Crear/Actualizar Usuario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "💾 Crear/Actualizar Usuario": {
+      "main": [
+        [
+          {
+            "node": "📖 Leer Estado Usuario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📖 Leer Estado Usuario": {
+      "main": [
+        [
+          {
+            "node": "🔗 Preparar Contexto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔗 Preparar Contexto": {
+      "main": [
+        [
+          {
+            "node": "🔄 ¿Reset a Menú?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔄 ¿Reset a Menú?": {
+      "main": [
+        [
+          {
+            "node": "🔄 Reset Estado",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "🔀 Switch Estado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔄 Reset Estado": {
+      "main": [
+        [
+          {
+            "node": "✅ Cita Confirmada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔄 Estado→menu_inicial": {
+      "main": [
+        [
+          {
+            "node": "🔀 Switch Estado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔀 Switch Estado": {
+      "main": [
+        [
+          {
+            "node": "📤 Enviar Menú",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "🎯 Detectar Opción",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "✅ Validar Fecha",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "✅ Validar Hora",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "🔍 Buscar Servicio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "🔀 Switch Confirmación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📤 Enviar Menú": {
+      "main": [
+        [
+          {
+            "node": "💾 Estado→esperando_opcion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎯 Detectar Opción": {
+      "main": [
+        [
+          {
+            "node": "🔍 Buscar Citas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "📤 Pedir Fecha",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "📖 Leer Servicios",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "📤 Ubicación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Buscar Citas": {
+      "main": [
+        [
+          {
+            "node": "❓ Tiene Citas?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❓ Tiene Citas?": {
+      "main": [
+        [
+          {
+            "node": "📤 Mostrar Citas",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "📤 Sin Citas",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📤 Pedir Fecha": {
+      "main": [
+        [
+          {
+            "node": "💾 Estado→esperando_fecha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📖 Leer Servicios": {
+      "main": [
+        [
+          {
+            "node": "📤 Pedir Servicio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✅ Validar Fecha": {
+      "main": [
+        [
+          {
+            "node": "❓ Fecha Válida?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❓ Fecha Válida?": {
+      "main": [
+        [
+          {
+            "node": "📤 Pedir Hora",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "❌ Fecha Inválida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📤 Pedir Hora": {
+      "main": [
+        [
+          {
+            "node": "💾 Guardar Fecha",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "✅ Validar Hora": {
+      "main": [
+        [
+          {
+            "node": "❓ Hora Válida?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❓ Hora Válida?": {
+      "main": [
+        [
+          {
+            "node": "💾 Guardar Hora",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "❌ Hora Inválida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "💾 Guardar Hora": {
+      "main": [
+        [
+          {
+            "node": "📖 Leer Servicios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔍 Buscar Servicio": {
+      "main": [
+        [
+          {
+            "node": "❓ Servicio Válido?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❓ Servicio Válido?": {
+      "main": [
+        [
+          {
+            "node": "📦 Preparar Confirmación",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "❌ Servicio Inválido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📦 Preparar Confirmación": {
+      "main": [
+        [
+          {
+            "node": "📤 Pedir Confirmación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📤 Pedir Confirmación": {
+      "main": [
+        [
+          {
+            "node": "💾 Estado→confirmando",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🔀 Switch Confirmación": {
+      "main": [
+        [
+          {
+            "node": "💾 GUARDAR CITA",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "❌ Cita Cancelada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "💾 GUARDAR CITA": {
+      "main": [
+        [
+          {
+            "node": "🔄 Reset Estado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❌ Cita Cancelada": {
+      "main": [
+        [
+          {
+            "node": "🔄 Reset Estado (Cancelar)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "81f2af41-8489-4c35-9a72-3351e57ecc9d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "04fa49b5342683f3459c11df7acab88fd9d5826423bbee4173c0a22e9e21410c"
+  },
+  "id": "oSpN-4SVLEWZNDoT9-QpT",
+  "tags": []
+}

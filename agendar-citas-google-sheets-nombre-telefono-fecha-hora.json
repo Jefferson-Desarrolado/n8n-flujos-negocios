@@ -1,0 +1,221 @@
+{
+  "name": "ExcelAgendar",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -144,
+        -64
+      ],
+      "id": "3d7f1a55-1416-4312-bb2b-c439723ebd6c",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b7f303c2-2b82-4150-ba94-c6a05d4e90a3",
+              "name": "Nombre",
+              "value": "Jefferson Alvarez",
+              "type": "string"
+            },
+            {
+              "id": "f67e270c-67e8-4489-b1d9-665e4ada8546",
+              "name": "Teléfono",
+              "value": "+593987654321+593987654321",
+              "type": "string"
+            },
+            {
+              "id": "e4cfc987-a588-4865-8430-4308708fe532",
+              "name": "",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "c67843d8-b5e9-4170-bb58-5234261ecf09",
+              "name": "Fecha",
+              "value": "2026-02-10",
+              "type": "string"
+            },
+            {
+              "id": "ad46356f-1895-4840-a912-af77d247704b",
+              "name": "Hora",
+              "value": "10:30 AM",
+              "type": "string"
+            },
+            {
+              "id": "228d3561-959e-4f65-9955-6d5c5911ab7d",
+              "name": "Servicio",
+              "value": "Consulta médica",
+              "type": "string"
+            },
+            {
+              "id": "bb5d76ba-5c50-438d-ad96-881c6006c30a",
+              "name": "Agente",
+              "value": "María González",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        64,
+        -64
+      ],
+      "id": "b0bc0460-1cc2-4ac3-b204-3eec74652028",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1WPOTsLFOKuPZz9cTnvISb0a8juBH2-7CLEfAJA2dx88",
+          "mode": "list",
+          "cachedResultName": "AgenteIA",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1WPOTsLFOKuPZz9cTnvISb0a8juBH2-7CLEfAJA2dx88/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Hoja 1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1WPOTsLFOKuPZz9cTnvISb0a8juBH2-7CLEfAJA2dx88/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Nombre": "={{ $json.Nombre }}",
+            "Teléfono": "={{ $json['Teléfono'] }}",
+            "Fecha": "={{ $json.Fecha }}",
+            "Hora": "={{ $json.Hora }}",
+            "Servicio": "={{ $json.Servicio }}",
+            "Agente": "={{ $json.Agente }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "Nombre",
+              "displayName": "Nombre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Teléfono",
+              "displayName": "Teléfono",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Fecha",
+              "displayName": "Fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Hora",
+              "displayName": "Hora",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Servicio",
+              "displayName": "Servicio",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "Agente",
+              "displayName": "Agente",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        272,
+        -64
+      ],
+      "id": "8959a1e2-caf1-4c53-8591-9c9c2c0c8dea",
+      "name": "Append row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YK24ixs7cH2x2oyZ",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Append row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "75aa5ecd-6716-4571-a80d-18ab06a01f68",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "04fa49b5342683f3459c11df7acab88fd9d5826423bbee4173c0a22e9e21410c"
+  },
+  "id": "cK_peH03NE1LF5vSIKQI6",
+  "tags": []
+}

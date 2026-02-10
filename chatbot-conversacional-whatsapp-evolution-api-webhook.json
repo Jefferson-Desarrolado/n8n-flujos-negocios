@@ -1,0 +1,77 @@
+{
+  "name": "🤖 ASISTENTE CONVERSACIONAL FINAL - evolution-in",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "evolution-in",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -1504,
+        48
+      ],
+      "id": "60d520f4-4816-45d0-9b63-45f0d415899f",
+      "name": "Webhook",
+      "webhookId": "bb5868a9-3105-4dda-84f5-2586cc0d8713"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution-api:8080/message/sendText/Jefferson",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "apikey",
+              "value": "MiClaveSecreta2026XYZ"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.body.data.key.remoteJid.split('@')[0] }}\",\n  \"text\": \"Hola 👋 soy Jefferson, gracias por escribir. ¿En qué te ayudo?\"\n}\n",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.3,
+      "position": [
+        -1296,
+        48
+      ],
+      "id": "7b35c985-3f8d-427e-ae89-3e722b606a37",
+      "name": "HTTP Request"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "f114d59a-9d1c-473c-ac1e-ea82ac2053dc",
+  "meta": {
+    "instanceId": "04fa49b5342683f3459c11df7acab88fd9d5826423bbee4173c0a22e9e21410c"
+  },
+  "id": "iF5ZSifNPlLNylApnq3mG",
+  "tags": []
+}

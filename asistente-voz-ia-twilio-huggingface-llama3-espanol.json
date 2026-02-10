@@ -1,0 +1,312 @@
+{
+  "name": "📞 ASISTENTE DE VOZ IA - CORREGIDO",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "203098fc-dab2-466b-b6ea-cc1d441dcb38",
+      "name": "▶️ LLAMAR",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        2224,
+        -208
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/TU_TWILIO_SID/Calls.json",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "TU_TWILIO_AUTH_BASE64"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "From",
+              "value": "+19123783757"
+            },
+            {
+              "name": "To",
+              "value": "+593959186832"
+            },
+            {
+              "name": "Twiml",
+              "value": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response><Gather input=\"speech\" timeout=\"8\" speechTimeout=\"auto\" action=\"https://corymbose-symmetrically-christian.ngrok-free.dev/webhook/voice-ia\" method=\"POST\" language=\"es-ES\"><Say voice=\"Polly.Lucia\" language=\"es-ES\">Hola, soy tu asistente virtual. Por favor dime en qué puedo ayudarte.</Say></Gather><Say voice=\"Polly.Lucia\" language=\"es-ES\">No escuché nada. Adiós.</Say></Response>"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "96165212-f98e-4701-bda5-0016e9a039d4",
+      "name": "📞 Iniciar Llamada",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2432,
+        -208
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "voice-ia",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "8dd6879b-eacf-4cd9-a328-1bea9cd7d5a5",
+      "name": "🎤 Webhook Voz",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        2224,
+        -16
+      ],
+      "webhookId": "voice-ia-def"
+    },
+    {
+      "parameters": {
+        "jsCode": "const body = $input.item.json.body || $input.item.json;\nconst speechResult = body.SpeechResult || '';\n\nconsole.log('📥 DATOS COMPLETOS:', JSON.stringify(body, null, 2));\nconsole.log('📢 SpeechResult:', speechResult);\n\nif (!speechResult || speechResult.trim() === '') {\n  console.log('❌ No se detectó voz');\n  return {\n    json: {\n      userMessage: '',\n      isEmpty: true,\n      rawBody: body\n    }\n  };\n}\n\nconsole.log('✅ Usuario dijo:', speechResult);\n\nreturn {\n  json: {\n    userMessage: speechResult.trim(),\n    isEmpty: false,\n    rawBody: body\n  }\n};"
+      },
+      "id": "98532ec3-e5ab-46ad-8ee5-c6cbc79a38b8",
+      "name": "📝 Procesar Voz",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2432,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.isEmpty }}"
+            }
+          ]
+        }
+      },
+      "id": "1e0c3dd7-95b1-422f-b955-26e1fd0ac334",
+      "name": "¿Dijo algo?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        2624,
+        -16
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://router.huggingface.co/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer TU_HUGGINGFACE_TOKEN"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({\n  model: 'meta-llama/Meta-Llama-3-8B-Instruct',\n  messages: [\n    {\n      role: 'system',\n      content: 'Eres un asistente virtual por teléfono. Responde de forma natural, amigable y CONCISA (máximo 30 palabras). Habla en español.'\n    },\n    {\n      role: 'user',\n      content: $json.userMessage\n    }\n  ],\n  temperature: 0.7,\n  max_tokens: 80,\n  top_p: 0.9,\n  stream: false\n}) }}",
+        "options": {
+          "timeout": 30000
+        }
+      },
+      "id": "9658d7b3-9e14-4f55-8898-ccc102a46c8f",
+      "name": "🤖 IA",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2832,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.item.json;\n\nlet iaText = '';\n\nif (response.choices && response.choices[0] && response.choices[0].message) {\n  iaText = response.choices[0].message.content.trim();\n  console.log('✅ IA respondió:', iaText);\n} else {\n  iaText = 'Disculpa, no pude procesarlo. ¿Puedes repetir?';\n  console.log('⚠️ Error de IA, usando fallback');\n}\n\nconst escapedText = iaText\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\"/g, '&quot;')\n  .replace(/'/g, '&apos;');\n\nconst twiml = `<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Response>\n  <Say voice=\"Polly.Lucia\" language=\"es-ES\">${escapedText}</Say>\n  <Gather input=\"speech\" timeout=\"8\" speechTimeout=\"auto\" action=\"https://corymbose-symmetrically-christian.ngrok-free.dev/webhook/voice-ia\" method=\"POST\" language=\"es-ES\">\n    <Say voice=\"Polly.Lucia\" language=\"es-ES\">¿Algo más?</Say>\n  </Gather>\n  <Say voice=\"Polly.Lucia\" language=\"es-ES\">Gracias. Hasta luego.</Say>\n</Response>`;\n\nreturn {\n  json: {\n    twiml: twiml\n  }\n};"
+      },
+      "id": "a56f6514-8eb4-46b3-8b2c-7bbc7b951257",
+      "name": "📋 Crear Respuesta",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3024,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.twiml }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/xml; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "b0e20337-dc00-4011-8f8a-128f7161f42c",
+      "name": "↩️ Enviar",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        3232,
+        -112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const twiml = `<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Response>\n  <Say voice=\"Polly.Lucia\" language=\"es-ES\">Lo siento, no escuché nada. Por favor intenta de nuevo.</Say>\n  <Gather input=\"speech\" timeout=\"8\" speechTimeout=\"auto\" action=\"https://corymbose-symmetrically-christian.ngrok-free.dev/webhook/voice-ia\" method=\"POST\" language=\"es-ES\">\n    <Say voice=\"Polly.Lucia\" language=\"es-ES\">¿En qué puedo ayudarte?</Say>\n  </Gather>\n  <Say voice=\"Polly.Lucia\" language=\"es-ES\">Hasta luego.</Say>\n</Response>`;\n\nconsole.log('❌ Enviando respuesta vacía');\n\nreturn {\n  json: {\n    twiml: twiml\n  }\n};"
+      },
+      "id": "fe42859e-0c0c-48ed-8e27-d9bede32d00d",
+      "name": "❌ Sin Voz",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2832,
+        96
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.twiml }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/xml; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "0480a77b-c9c5-4a55-ae71-f91eed7d1c50",
+      "name": "↩️ Enviar Vacío",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        3024,
+        96
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "▶️ LLAMAR": {
+      "main": [
+        [
+          {
+            "node": "📞 Iniciar Llamada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎤 Webhook Voz": {
+      "main": [
+        [
+          {
+            "node": "📝 Procesar Voz",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📝 Procesar Voz": {
+      "main": [
+        [
+          {
+            "node": "¿Dijo algo?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Dijo algo?": {
+      "main": [
+        [
+          {
+            "node": "🤖 IA",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "❌ Sin Voz",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🤖 IA": {
+      "main": [
+        [
+          {
+            "node": "📋 Crear Respuesta",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📋 Crear Respuesta": {
+      "main": [
+        [
+          {
+            "node": "↩️ Enviar",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❌ Sin Voz": {
+      "main": [
+        [
+          {
+            "node": "↩️ Enviar Vacío",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "248b104a-b954-41d9-99c0-dd1a4762c10d",
+  "meta": {
+    "instanceId": "04fa49b5342683f3459c11df7acab88fd9d5826423bbee4173c0a22e9e21410c"
+  },
+  "id": "23wK7frpzG4P5PguAPRH8",
+  "tags": []
+}

@@ -1,0 +1,84 @@
+{
+  "name": "📞 Llamada IA - SIN NGROK",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "dbd838e1-b63c-4094-98d8-c40bb3690def",
+      "name": "▶️ LLAMAR AHORA",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        1520,
+        48
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/TU_TWILIO_SID/Calls.json",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Basic QUMzYmU1OWRlZDRiMjI1NDFkMGM4MDNhYzFmZjU1ZGRlYjoxMmQyY2QyMDNiZmUzZGY3ZmYyNDBkOWZjMjEyZDc4Mw=="
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "From",
+              "value": "+19123783757"
+            },
+            {
+              "name": "To",
+              "value": "+593959186832"
+            },
+            {
+              "name": "Url",
+              "value": "http://twimlets.com/holdmusic?Bucket=com.twilio.music.classical"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "622be5c8-7f07-4ca9-9247-d377f248cf6b",
+      "name": "📞 Test Llamada",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1728,
+        48
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "▶️ LLAMAR AHORA": {
+      "main": [
+        [
+          {
+            "node": "📞 Test Llamada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "6fdee9f2-124c-4bce-bfa9-f1d5d4b5c093",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "04fa49b5342683f3459c11df7acab88fd9d5826423bbee4173c0a22e9e21410c"
+  },
+  "id": "HO-w09_8wbHxxgBcFlYpy",
+  "tags": []
+}

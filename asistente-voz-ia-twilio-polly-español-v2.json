@@ -1,0 +1,447 @@
+{
+  "name": "📞 ASISTENTE VOZ IA - SIN VOZ EN INGLÉS",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "be7f1ca7-846d-4773-8221-323750303004",
+      "name": "▶️ HACER LLAMADA",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        192,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.twilio.com/2010-04-01/Accounts/TU_TWILIO_SID/Calls.json",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "TU_TWILIO_AUTH_BASE64"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "form-urlencoded",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "From",
+              "value": "+18133589493"
+            },
+            {
+              "name": "To",
+              "value": "+593959186832"
+            },
+            {
+              "name": "Twiml",
+              "value": "<?xml version=\"1.0\" encoding=\"UTF-8\"?><Response><Pause length=\"1\"/><Gather input=\"speech\" timeout=\"15\" speechTimeout=\"auto\" speechModel=\"phone_call\" hints=\"cita, agendar, corte, tinte, manicure, pedicure, lunes, martes, miércoles, jueves, viernes, sábado, domingo\" action=\"https://corymbose-symmetrically-christian.ngrok-free.dev/webhook/voice-ia\" method=\"POST\" language=\"es-MX\"><Say voice=\"Polly.Mia\" language=\"es-MX\">¡Hola! Soy tu asistente virtual. ¿Qué cita deseas agendar?</Say></Gather><Say voice=\"Polly.Mia\" language=\"es-MX\">No escuché nada. Hasta luego.</Say><Hangup/></Response>"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "d5d58181-d59e-463b-b05b-ede063ea1877",
+      "name": "📞 Llamar DIRECTO en Español",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        400,
+        -96
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "voice-ia",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "9d191f29-edbc-4746-8221-3f387062c501",
+      "name": "🎤 Recibir Audio",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        192,
+        112
+      ],
+      "webhookId": "voice-ia-handler"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== ANÁLISIS AVANZADO DE AUDIO =====\nconst body = $input.item.json.body || $input.item.json;\nconst speechResult = body.SpeechResult || '';\nconst confidence = parseFloat(body.Confidence || 0);\nconst callStatus = body.CallStatus || '';\nconst callSid = body.CallSid || '';\nconst from = body.From || '';\nconst to = body.To || '';\n\n// Logging estructurado profesional\nconst logData = {\n  timestamp: new Date().toISOString(),\n  callSid: callSid,\n  from: from,\n  to: to,\n  callStatus: callStatus,\n  speechResult: speechResult,\n  confidence: confidence,\n  stage: 'speech_analysis'\n};\n\nconsole.log('📊 ANALYTICS:', JSON.stringify(logData));\n\n// ===== CASO 1: VOZ DETECTADA CON CONFIDENCE BAJO =====\nif (speechResult && confidence > 0 && confidence < 0.6) {\n  console.log('⚠️ Confidence bajo:', confidence, '- Pidiendo confirmación');\n  return [{\n    json: {\n      needsConfirmation: true,\n      tentativeSpeech: speechResult,\n      confidence: confidence,\n      callSid: callSid,\n      logData: logData\n    }\n  }];\n}\n\n// ===== CASO 2: VOZ DETECTADA CON CONFIDENCE ACEPTABLE =====\nif (speechResult && speechResult.trim() !== '') {\n  // Validar longitud mínima\n  if (speechResult.length < 3) {\n    console.log('⚠️ Speech demasiado corto:', speechResult.length, 'chars');\n    return [{\n      json: {\n        isEmpty: true,\n        reason: 'too_short',\n        callSid: callSid,\n        logData: logData\n      }\n    }];\n  }\n  \n  console.log('✅ Speech válido:', speechResult, '(confidence:', confidence, ')');\n  return [{\n    json: {\n      userMessage: speechResult.trim(),\n      confidence: confidence,\n      callSid: callSid,\n      from: from,\n      to: to,\n      logData: logData\n    }\n  }];\n}\n\n// ===== CASO 3: SIN VOZ DETECTADA =====\nconsole.log('❌ No se detectó voz');\nreturn [{\n  json: {\n    isEmpty: true,\n    reason: 'no_speech',\n    callSid: callSid,\n    logData: logData\n  }\n}];"
+      },
+      "id": "c54bde13-42f1-4d2f-a1dc-f0c04afe9dee",
+      "name": "📝 Análisis Avanzado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        400,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "needs-confirm",
+              "leftValue": "={{ $json.needsConfirmation }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "ff4b7e70-601d-4ce2-8961-ff162f762447",
+      "name": "🎯 ¿Necesita confirmación?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        592,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== MANEJO DE CONFIDENCE BAJO =====\nconst tentativeSpeech = $json.tentativeSpeech || '';\nconst confidence = $json.confidence || 0;\n\nconsole.log('🤔 Pidiendo confirmación para:', tentativeSpeech, '(confidence:', confidence, ')');\n\nconst twiml = `<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Response>\n  <Gather \n    input=\"speech dtmf\" \n    timeout=\"10\" \n    speechTimeout=\"auto\"\n    speechModel=\"phone_call\"\n    hints=\"sí, si, no, correcto, incorrecto\"\n    action=\"https://corymbose-symmetrically-christian.ngrok-free.dev/webhook/voice-ia\" \n    method=\"POST\" \n    language=\"es-MX\">\n    <Say voice=\"Polly.Mia\" language=\"es-MX\">¿Dijiste ${tentativeSpeech}? Di sí o no.</Say>\n  </Gather>\n  <Say voice=\"Polly.Mia\" language=\"es-MX\">No escuché tu respuesta. Intenta de nuevo.</Say>\n  <Hangup/>\n</Response>`;\n\nreturn {\n  json: {\n    twiml: twiml,\n    type: 'confirmation',\n    originalSpeech: tentativeSpeech\n  }\n};"
+      },
+      "id": "9f9d3f4d-f835-43aa-9875-da7ea951c421",
+      "name": "❓ Pedir Confirmación",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.twiml }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/xml; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "058623c3-0f7c-4c15-9ecb-a5497940fe8c",
+      "name": "↩️ Enviar Confirmación",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        992,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "has-message",
+              "leftValue": "={{ $json.userMessage }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "cc11e670-d5a9-4e30-b867-277334a58e3f",
+      "name": "💬 ¿Hay mensaje?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        800,
+        208
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== LLAMADA A IA CON RETRY LOGIC =====\nconst userMessage = $json.userMessage || '';\nconst confidence = $json.confidence || 0;\nconst callSid = $json.callSid || '';\n\nconst systemPrompt = `Eres un asistente virtual mexicano de una empresa de chatbots que brinda servicios a peluquerías, restaurantes, hospitales y consultorios.\n\nREGLAS ESTRICTAS:\n- Respuestas de 15-20 palabras MÁXIMO\n- NUNCA inventes información que no tienes\n- Si no sabes algo, di \"No tengo esa información, ¿puedo ayudarte con algo más?\"\n- Usa expresiones mexicanas naturales: \"¡Claro!\", \"con gusto\", \"porfa\", \"¿mande?\"\n- Haz UNA pregunta a la vez\n- Sé amigable pero profesional\n\nEJEMPLOS DE RESPUESTAS CORRECTAS:\n\nUsuario: \"Quiero agendar cita\"\nAsistente: \"¡Claro! ¿Para qué servicio y qué día prefieres?\"\n\nUsuario: \"Para corte de cabello mañana\"\nAsistente: \"Perfecto. ¿A qué hora te viene bien?\"\n\nUsuario: \"A las 3 de la tarde\"\nAsistente: \"¡Listo! Tu cita para corte está agendada mañana a las 3 PM. ¿Algo más?\"\n\nNUNCA:\n- Digas \"Como modelo de IA...\" o similares\n- Uses listas numeradas en voz\n- Des múltiples opciones a la vez\n- Seas repetitivo\n- Inventes horarios o disponibilidad`;\n\nconst payload = {\n  model: 'meta-llama/Meta-Llama-3-8B-Instruct',\n  messages: [\n    {\n      role: 'system',\n      content: systemPrompt\n    },\n    {\n      role: 'user',\n      content: userMessage\n    }\n  ],\n  temperature: 0.7,\n  max_tokens: 60,\n  top_p: 0.9,\n  stream: false\n};\n\nconsole.log('🤖 Llamando a IA con mensaje:', userMessage, '(confidence:', confidence, ')');\n\nreturn {\n  json: {\n    payload: payload,\n    userMessage: userMessage,\n    confidence: confidence,\n    callSid: callSid,\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "c320f531-bf10-414a-9b8a-6e6c43a85dc2",
+      "name": "🎨 Preparar IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://router.huggingface.co/v1/chat/completions",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Bearer TU_HUGGINGFACE_TOKEN"
+            },
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.payload) }}",
+        "options": {
+          "timeout": 20000
+        }
+      },
+      "id": "50cd63eb-023f-435e-b44b-fb2014879118",
+      "name": "🤖 IA Rápida",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1200,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== FORMATEO DE RESPUESTA IA =====\nconst response = $input.item.json;\n\nlet iaText = '';\nlet success = false;\n\n// Extraer respuesta\nif (response.choices && response.choices[0] && response.choices[0].message) {\n  iaText = response.choices[0].message.content.trim();\n  success = true;\n  console.log('✅ IA respondió:', iaText);\n} else {\n  // Fallback profesional\n  iaText = 'Disculpa, tengo un problema técnico. ¿Puedes repetir lo que necesitas porfa?';\n  success = false;\n  console.error('⚠️ Error en respuesta de IA:', response);\n}\n\n// Validar longitud de respuesta\nif (iaText.split(' ').length > 30) {\n  console.warn('⚠️ Respuesta muy larga:', iaText.split(' ').length, 'palabras');\n}\n\n// Escapar caracteres XML\nconst escapedText = iaText\n  .replace(/&/g, '&amp;')\n  .replace(/</g, '&lt;')\n  .replace(/>/g, '&gt;')\n  .replace(/\"/g, '&quot;')\n  .replace(/'/g, '&apos;');\n\n// Hints adaptativos\nconst hints = [\n  'sí', 'si', 'no', 'correcto', 'gracias', 'adiós', 'nada más',\n  'cita', 'agendar', 'cancelar', 'cambiar',\n  'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado', 'domingo'\n].join(', ');\n\n// TwiML optimizado\nconst twiml = `<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Response>\n  <Say voice=\"Polly.Mia\" language=\"es-MX\">${escapedText}</Say>\n  <Gather \n    input=\"speech\" \n    timeout=\"15\" \n    speechTimeout=\"auto\"\n    speechModel=\"phone_call\"\n    hints=\"${hints}\"\n    action=\"https://corymbose-symmetrically-christian.ngrok-free.dev/webhook/voice-ia\" \n    method=\"POST\" \n    language=\"es-MX\">\n    <Say voice=\"Polly.Mia\" language=\"es-MX\">¿Algo más en lo que pueda ayudarte?</Say>\n  </Gather>\n  <Say voice=\"Polly.Mia\" language=\"es-MX\">¡Gracias por llamar! Hasta luego.</Say>\n  <Hangup/>\n</Response>`;\n\nreturn {\n  json: {\n    twiml: twiml,\n    type: 'ia_response',\n    iaText: iaText,\n    success: success,\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "ada0f95d-fa35-493f-82f8-75fc156d098d",
+      "name": "📋 Formatear IA",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1392,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.twiml }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/xml; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "99aaa8e1-a5fd-49dc-84c7-69bcfa305720",
+      "name": "↩️ Enviar IA",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1600,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ===== MANEJO DE SIN VOZ =====\nconst reason = $json.reason || 'unknown';\n\nconsole.log('❌ Sin voz detectada. Razón:', reason);\n\nconst twiml = `<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Response>\n  <Say voice=\"Polly.Mia\" language=\"es-MX\">¡Disculpa! No escuché nada. Intenta de nuevo porfa.</Say>\n  <Gather \n    input=\"speech\" \n    timeout=\"15\" \n    speechTimeout=\"auto\"\n    speechModel=\"phone_call\"\n    hints=\"cita, agendar, corte, tinte\"\n    action=\"https://corymbose-symmetrically-christian.ngrok-free.dev/webhook/voice-ia\" \n    method=\"POST\" \n    language=\"es-MX\">\n    <Say voice=\"Polly.Mia\" language=\"es-MX\">¿Qué cita deseas agendar?</Say>\n  </Gather>\n  <Say voice=\"Polly.Mia\" language=\"es-MX\">Hasta luego.</Say>\n  <Hangup/>\n</Response>`;\n\nreturn {\n  json: {\n    twiml: twiml,\n    type: 'no_voice',\n    reason: reason\n  }\n};"
+      },
+      "id": "68d97bb4-7020-47c9-8540-615cca126a6d",
+      "name": "❌ Sin Voz",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.twiml }}",
+        "options": {
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/xml; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "dec169b9-bef1-42c0-a542-388cfd2bea28",
+      "name": "↩️ Enviar Sin Voz",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1200,
+        304
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "▶️ HACER LLAMADA": {
+      "main": [
+        [
+          {
+            "node": "📞 Llamar DIRECTO en Español",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎤 Recibir Audio": {
+      "main": [
+        [
+          {
+            "node": "📝 Análisis Avanzado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📝 Análisis Avanzado": {
+      "main": [
+        [
+          {
+            "node": "🎯 ¿Necesita confirmación?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎯 ¿Necesita confirmación?": {
+      "main": [
+        [
+          {
+            "node": "❓ Pedir Confirmación",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "💬 ¿Hay mensaje?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❓ Pedir Confirmación": {
+      "main": [
+        [
+          {
+            "node": "↩️ Enviar Confirmación",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "💬 ¿Hay mensaje?": {
+      "main": [
+        [
+          {
+            "node": "🎨 Preparar IA",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "❌ Sin Voz",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🎨 Preparar IA": {
+      "main": [
+        [
+          {
+            "node": "🤖 IA Rápida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "🤖 IA Rápida": {
+      "main": [
+        [
+          {
+            "node": "📋 Formatear IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "📋 Formatear IA": {
+      "main": [
+        [
+          {
+            "node": "↩️ Enviar IA",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "❌ Sin Voz": {
+      "main": [
+        [
+          {
+            "node": "↩️ Enviar Sin Voz",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "8b52531f-b177-44c3-866d-0a1e03afe20d",
+  "meta": {
+    "instanceId": "04fa49b5342683f3459c11df7acab88fd9d5826423bbee4173c0a22e9e21410c"
+  },
+  "id": "DSTJh5Sx228odL2B1HEGg",
+  "tags": []
+}

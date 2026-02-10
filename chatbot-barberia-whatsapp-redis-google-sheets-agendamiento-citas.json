@@ -1,0 +1,457 @@
+{
+  "name": "Chatbot Barbería - Google Sheets + Redis+what+citas",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "evolution-in",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "d873744c-9e51-4baa-8fe1-2f4d2e419b20",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        -656,
+        112
+      ],
+      "webhookId": "evolution-api"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extraer información del webhook\nconst phone = $input.item.json.body.data.key.remoteJid.split('@')[0];\nconst message = ($input.item.json.body.data.message.conversation || '').toLowerCase().trim();\nconst pushName = $input.item.json.body.data.pushName || 'Usuario';\nconst instanceId = $input.item.json.body.instance;\n\nreturn {\n  json: {\n    phone: phone,\n    message: message,\n    pushName: pushName,\n    instanceId: instanceId,\n    timestamp: new Date().toISOString(),\n    redisKey: `barberia:conversation:${phone}`\n  }\n};"
+      },
+      "id": "6cce49c6-9541-4f32-b9c2-565870e3068f",
+      "name": "Extraer Datos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -448,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "get",
+        "key": "={{ $json.redisKey }}",
+        "options": {}
+      },
+      "id": "7bc041ba-fe19-49a7-bc2b-908039f43bd4",
+      "name": "Redis Get",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        -224,
+        112
+      ],
+      "credentials": {
+        "redis": {
+          "id": "2bSQXmfRqLV6Z8jI",
+          "name": "Redis account"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1pfaOsE9rjd9PHStqX1ogg8pn2kG3anLbThy6fs7vSBA/edit?gid=0#gid=0",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "servicios_disponibles",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1pfaOsE9rjd9PHStqX1ogg8pn2kG3anLbThy6fs7vSBA/edit#gid=0"
+        },
+        "options": {
+          "dataLocationOnSheet": {
+            "values": {
+              "rangeDefinition": "specifyRangeA1",
+              "range": "A1:E100"
+            }
+          },
+          "returnAllMatches": "returnAllMatches"
+        }
+      },
+      "id": "846f662e-d3ef-4581-a348-3f800b4af100",
+      "name": "Google Sheets - Servicios",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        0,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YK24ixs7cH2x2oyZ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ========================================\n// MOTOR DE LÓGICA - VERSIÓN FINAL CORREGIDA\n// ========================================\n\n// Obtener datos del contexto\nconst phone = $('Extraer Datos').item.json.phone;\nconst message = $('Extraer Datos').item.json.message;\nconst pushName = $('Extraer Datos').item.json.pushName;\nconst redisKey = $('Extraer Datos').item.json.redisKey;\n\n// ===== OBTENER ESTADO DE REDIS (CORREGIDO) =====\nlet previousState = { step: 'inicio', userName: pushName };  // ← DEFAULT\n\ntry {\n  const redisData = $('Redis Get').item.json;\n  \n  // ✅ VERIFICAR MÚLTIPLES FORMATOS POSIBLES\n  let redisValue = null;\n  \n  if (redisData) {\n    // Formato 1: { value: \"...\" }\n    if (redisData.value) {\n      redisValue = redisData.value;\n    }\n    // Formato 2: { propertyName: \"...\" }\n    else if (redisData.propertyName) {\n      redisValue = redisData.propertyName;\n    }\n    // Formato 3: El objeto completo ES el estado\n    else if (redisData.step) {\n      previousState = redisData;\n      redisValue = null; // Ya tenemos el estado\n    }\n  }\n  \n  // Parsear si es JSON string\n  if (redisValue && typeof redisValue === 'string') {\n    try {\n      previousState = JSON.parse(redisValue);\n    } catch (parseError) {\n      console.error('❌ Error parseando Redis:', parseError);\n    }\n  }\n  \n  console.log('✅ Estado recuperado:', JSON.stringify(previousState));\n  \n} catch (e) {\n  console.error('❌ Error leyendo Redis:', e.message);\n  previousState = { step: 'inicio', userName: pushName };\n}\n\n// ===== OBTENER SERVICIOS =====\nconst servicios = $('Google Sheets - Servicios').all();\n\nif (!servicios || servicios.length === 0) {\n  return {\n    json: {\n      phone: phone,\n      pushName: pushName,\n      response: '⚠️ Error al cargar servicios. Intenta más tarde.',\n      redisKey: redisKey,\n      redisValue: JSON.stringify({ step: 'menu_principal', userName: pushName }),\n      shouldSaveToSheets: false,\n      appointmentData: {}\n    }\n  };\n}\n\nconsole.log('📊 Servicios cargados:', servicios.length);\n\n// ===== INICIALIZAR VARIABLES =====\nlet response = '';\nlet newState = {};\nlet shouldSaveToSheets = false;\nlet appointmentData = {};\n\nconst currentStep = previousState.step || 'inicio';\n\nconsole.log('━━━━━━━━━━━━━━━━━━━━━━━━━━');\nconsole.log('📍 ESTADO ACTUAL:', currentStep);\nconsole.log('💬 MENSAJE:', message);\nconsole.log('👤 USUARIO:', pushName);\nconsole.log('━━━━━━━━━━━━━━━━━━━━━━━━━━');\n\n// ========================================\n// MÁQUINA DE ESTADOS\n// ========================================\n\n// ===== CASO 1: SALUDO (SIEMPRE TIENE PRIORIDAD) =====\nif (message === 'hola' || message === 'hi' || message === 'menu' || message === 'inicio') {\n  console.log('✅ BLOQUE: Saludo/Inicio');\n  \n  response = `¡Hola *${pushName}*! 👋 Bienvenido a nuestra barbería.\\n\\n¿En qué puedo ayudarte?\\n\\n1️⃣ Ver servicios disponibles\\n2️⃣ Agendar una cita\\n\\nEscribe el número de tu opción.`;\n  \n  newState = {\n    step: 'menu_principal',\n    userName: pushName\n  };\n}\n\n// ===== CASO 2: ELIGIENDO SERVICIO =====\nelse if (currentStep === 'eligiendo_servicio') {\n  console.log('✅ BLOQUE: Eligiendo servicio');\n  \n  // Convertir mensaje a número\n  const servicioNumero = parseInt(message.trim());\n  \n  console.log('🔍 Número ingresado:', servicioNumero);\n  console.log('🔍 Es número válido:', !isNaN(servicioNumero));\n  console.log('🔍 Rango válido: 1-' + servicios.length);\n  \n  if (isNaN(servicioNumero) || servicioNumero < 1 || servicioNumero > servicios.length) {\n    console.log('❌ Número fuera de rango');\n    \n    response = `⚠️ Opción inválida: \"${message}\"\\n\\nPor favor elige un número del 1 al ${servicios.length}.`;\n    \n    newState = {\n      step: 'eligiendo_servicio',\n      userName: pushName\n    };\n  } \n  else {\n    // Usar índice de array (empieza en 0)\n    const servicioSeleccionado = servicios[servicioNumero - 1];\n    \n    console.log('✅ Servicio seleccionado:', servicioSeleccionado.json.nombre_servicio);\n    \n    const nombre = String(servicioSeleccionado.json.nombre_servicio).trim();\n    const precio = servicioSeleccionado.json.precio;\n    const duracion = servicioSeleccionado.json.duracion_minutos;\n    \n    response = `Perfecto! ✅\\n\\n*Servicio:* ${nombre}\\n*Precio:* $${precio}\\n*Duración:* ${duracion} min\\n\\n📅 ¿Qué día deseas tu cita?\\n\\nEjemplos:\\n- Mañana\\n- Lunes\\n- 15/02/2026`;\n    \n    newState = {\n      step: 'eligiendo_fecha',\n      userName: pushName,\n      servicio_id: String(servicioNumero),\n      servicio_nombre: nombre,\n      servicio_precio: precio,\n      servicio_duracion: duracion\n    };\n  }\n}\n\n// ===== CASO 3: VIENDO SERVICIOS =====\nelse if (currentStep === 'viendo_servicios') {\n  console.log('✅ BLOQUE: Viendo servicios');\n  \n  if (message === '2' || message.includes('agendar')) {\n    let serviciosTexto = '📅 *AGENDAR CITA*\\n\\nSelecciona el servicio:\\n\\n';\n    \n    servicios.forEach((servicio, idx) => {\n      const numero = idx + 1;\n      const nombre = servicio.json.nombre_servicio;\n      const precio = servicio.json.precio;\n      serviciosTexto += `${numero}. ${nombre} - $${precio}\\n`;\n    });\n    \n    serviciosTexto += '\\nEscribe el *número* del servicio.';\n    \n    response = serviciosTexto;\n    newState = {\n      step: 'eligiendo_servicio',\n      userName: pushName\n    };\n  } \n  else if (message === '0' || message === 'menu') {\n    response = `¿En qué puedo ayudarte?\\n\\n1️⃣ Ver servicios\\n2️⃣ Agendar cita`;\n    newState = {\n      step: 'menu_principal',\n      userName: pushName\n    };\n  } \n  else {\n    response = `Escribe:\\n\\n2️⃣ Para agendar\\n0️⃣ Volver al menú`;\n    newState = previousState;  // Mantener estado\n  }\n}\n\n// ===== CASO 4: ELIGIENDO FECHA =====\nelse if (currentStep === 'eligiendo_fecha') {\n  console.log('✅ BLOQUE: Eligiendo fecha');\n  \n  const fecha = message;\n  \n  response = `📅 Fecha: *${fecha}*\\n\\n🕐 ¿A qué hora?\\n\\nEjemplos:\\n- 10am\\n- 14:30\\n- 3pm`;\n  \n  newState = {\n    ...previousState,\n    step: 'eligiendo_hora',\n    fecha: fecha\n  };\n}\n\n// ===== CASO 5: ELIGIENDO HORA =====\nelse if (currentStep === 'eligiendo_hora') {\n  console.log('✅ BLOQUE: Eligiendo hora');\n  \n  const hora = message;\n  \n  response = `📋 *CONFIRMA TU CITA:*\\n\\n👤 Nombre: ${previousState.userName}\\n💇 Servicio: ${previousState.servicio_nombre}\\n💰 Precio: $${previousState.servicio_precio}\\n📅 Fecha: ${previousState.fecha}\\n🕐 Hora: ${hora}\\n⏱️ Duración: ${previousState.servicio_duracion} min\\n\\n¿Todo correcto?\\n\\n✅ Escribe *SI* para confirmar\\n❌ Escribe *NO* para cancelar`;\n  \n  newState = {\n    ...previousState,\n    step: 'confirmando',\n    hora: hora\n  };\n}\n\n// ===== CASO 6: CONFIRMANDO (CON ID AUTOMÁTICO) =====\nelse if (currentStep === 'confirmando') {\n  console.log('✅ BLOQUE: Confirmando');\n  \n  if (message === 'si' || message === 'sí' || message === 'confirmar' || message === 'ok' || message === 's') {\n    shouldSaveToSheets = true;\n    \n    // ✅ GENERAR ID ÚNICO\n    const citaId = Date.now().toString().slice(-8);\n    \n    appointmentData = {\n      id: citaId,                           // ✅ ID ÚNICO GENERADO\n      phone_number: phone,\n      nombre: previousState.userName,\n      fecha: previousState.fecha,\n      hora: previousState.hora,\n      servicio: previousState.servicio_nombre,\n      estado: 'Confirmada'\n    };\n    \n    console.log('💾 Guardando cita:', JSON.stringify(appointmentData));\n    \n    response = `✅ *CITA CONFIRMADA!*\\n\\n📋 ID: ${citaId}\\n👤 ${previousState.userName}\\n💇 ${previousState.servicio_nombre}\\n📅 ${previousState.fecha} a las ${previousState.hora}\\n\\n¡Te esperamos! 🎉\\n\\n¿Necesitas algo más?\\n1️⃣ Ver servicios\\n2️⃣ Otra cita`;\n    \n    newState = {\n      step: 'menu_principal',\n      userName: pushName\n    };\n  } \n  else if (message === 'no' || message === 'n' || message === 'cancelar') {\n    response = `❌ Cita cancelada.\\n\\n¿Deseas intentar de nuevo?\\n\\n1️⃣ Ver servicios\\n2️⃣ Agendar cita`;\n    newState = {\n      step: 'menu_principal',\n      userName: pushName\n    };\n  } \n  else {\n    response = `Por favor responde:\\n\\n✅ *SI* para confirmar\\n❌ *NO* para cancelar`;\n    newState = previousState;  // Mantener estado\n  }\n}\n\n// ===== CASO 7: MENÚ PRINCIPAL / INICIO =====\nelse if (currentStep === 'menu_principal' || currentStep === 'inicio') {\n  console.log('✅ BLOQUE: Menú principal');\n  \n  if (message === '1' || message.includes('servicio')) {\n    let serviciosTexto = '📋 *NUESTROS SERVICIOS:*\\n\\n';\n    \n    servicios.forEach((servicio, idx) => {\n      const numero = idx + 1;\n      const nombre = servicio.json.nombre_servicio;\n      const duracion = servicio.json.duracion_minutos;\n      const precio = servicio.json.precio;\n      const descripcion = servicio.json.descripcion || '';\n      \n      serviciosTexto += `${numero}. *${nombre}*\\n   💰 $${precio} | ⏱️ ${duracion} min\\n   ${descripcion}\\n\\n`;\n    });\n    \n    serviciosTexto += '¿Deseas agendar alguno? Escribe:\\n\\n2️⃣ Para agendar cita\\n0️⃣ Volver al menú';\n    \n    response = serviciosTexto;\n    newState = {\n      step: 'viendo_servicios',\n      userName: pushName\n    };\n  } \n  else if (message === '2' || message.includes('agendar') || message.includes('cita')) {\n    let serviciosTexto = '📅 *AGENDAR CITA*\\n\\nSelecciona el servicio:\\n\\n';\n    \n    servicios.forEach((servicio, idx) => {\n      const numero = idx + 1;\n      const nombre = servicio.json.nombre_servicio;\n      const precio = servicio.json.precio;\n      serviciosTexto += `${numero}. ${nombre} - $${precio}\\n`;\n    });\n    \n    serviciosTexto += '\\nEscribe el *número* del servicio que deseas.';\n    \n    response = serviciosTexto;\n    newState = {\n      step: 'eligiendo_servicio',\n      userName: pushName\n    };\n  } \n  else {\n    response = `No entendí tu opción, *${pushName}*. 😅\\n\\nEscribe:\\n\\n1️⃣ Ver servicios\\n2️⃣ Agendar cita`;\n    newState = {\n      step: 'menu_principal',\n      userName: pushName\n    };\n  }\n}\n\n// ===== CASO 8: ESTADO DESCONOCIDO =====\nelse {\n  console.log('❌ BLOQUE: Estado desconocido');\n  \n  response = `¡Hola *${pushName}*! 👋\\n\\n¿En qué puedo ayudarte?\\n\\n1️⃣ Ver servicios\\n2️⃣ Agendar cita`;\n  newState = {\n    step: 'menu_principal',\n    userName: pushName\n  };\n}\n\n// ========================================\n// RETORNAR RESULTADO\n// ========================================\n\nconsole.log('📤 Nuevo estado:', JSON.stringify(newState));\nconsole.log('━━━━━━━━━━━━━━━━━━━━━━━━━━');\n\nreturn {\n  json: {\n    phone: phone,\n    pushName: pushName,\n    response: response,\n    redisKey: redisKey,\n    redisValue: JSON.stringify(newState),\n    shouldSaveToSheets: shouldSaveToSheets,\n    appointmentData: appointmentData\n  }\n};"
+      },
+      "id": "f7ac65c5-9a5f-4616-9a5e-4dc16ff69e46",
+      "name": "Motor de Lógica",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "set",
+        "key": "={{ $json.redisKey }}",
+        "value": "={{ $json.redisValue }}",
+        "expire": true,
+        "ttl": 3600
+      },
+      "id": "9651f427-c8aa-45c7-abcf-0851b6dc7bb4",
+      "name": "Redis Set",
+      "type": "n8n-nodes-base.redis",
+      "typeVersion": 1,
+      "position": [
+        448,
+        112
+      ],
+      "credentials": {
+        "redis": {
+          "id": "2bSQXmfRqLV6Z8jI",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{ $json.shouldSaveToSheets }}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "02e99c3e-5328-47c0-af95-687768bfa94b",
+      "name": "¿Guardar en Sheets?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        672,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1pMTLvFjHPcBQD0elT-Kbbuh29zMY61JhwK5Z9eDJtZc/edit?gid=0#gid=0",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "citas_agendadas",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1pMTLvFjHPcBQD0elT-Kbbuh29zMY61JhwK5Z9eDJtZc/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {
+            "nombre ": "={{ $json.appointmentData.nombre }}",
+            "estado": "={{ $json.appointmentData.estado }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "phone_number",
+              "displayName": "phone_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "nombre ",
+              "displayName": "nombre ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha",
+              "displayName": "fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "hora",
+              "displayName": "hora",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "servicio   ",
+              "displayName": "servicio   ",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "fa0a68ad-5ad2-4f7b-ba9b-187ef77cc0e3",
+      "name": "Google Sheets - Guardar Cita",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        976,
+        0
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YK24ixs7cH2x2oyZ",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution_api:8080/message/sendText/Jefferson",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "apikey",
+              "value": "MiClaveSecreta2026XYZ"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ number: $('Motor de Lógica').item.json.phone, text: $('Motor de Lógica').item.json.response }) }}",
+        "options": {}
+      },
+      "id": "21310a79-607e-4089-8a76-11d7e2891b11",
+      "name": "Enviar Mensaje WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1104,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ { \"success\": true } }}",
+        "options": {}
+      },
+      "id": "84824c70-8369-4142-b2ea-7e4e49cd01e4",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        1328,
+        112
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Preparar datos en el orden exacto de las columnas de Google Sheets\nconst data = $input.item.json.appointmentData;\n\nconsole.log('📊 PREPARANDO DATOS PARA GOOGLE SHEETS');\nconsole.log('Datos recibidos:', JSON.stringify(data, null, 2));\n\n// Verificar que todos los campos existan\nif (!data || !data.id || !data.phone_number || !data.nombre) {\n  console.error('❌ ERROR: Faltan campos obligatorios');\n  console.error('appointmentData:', data);\n  throw new Error('Datos incompletos para guardar en Google Sheets');\n}\n\n// Retornar en el ORDEN EXACTO de las columnas: A, B, C, D, E, F, G\nconst resultado = {\n  id: data.id,\n  phone_number: data.phone_number,\n  nombre: data.nombre,\n  fecha: data.fecha,\n  hora: data.hora,\n  servicio: data.servicio,\n  estado: data.estado\n};\n\n\nconsole.log('✅ Datos formateados:', JSON.stringify(resultado, null, 2));\n\nreturn [\n  {\n    json: resultado\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        800,
+        0
+      ],
+      "id": "fce7115d-85a1-4721-ab2d-008ff4dac04c",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Extraer Datos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extraer Datos": {
+      "main": [
+        [
+          {
+            "node": "Redis Get",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Get": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets - Servicios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets - Servicios": {
+      "main": [
+        [
+          {
+            "node": "Motor de Lógica",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Motor de Lógica": {
+      "main": [
+        [
+          {
+            "node": "Redis Set",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Set": {
+      "main": [
+        [
+          {
+            "node": "¿Guardar en Sheets?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "¿Guardar en Sheets?": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Enviar Mensaje WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets - Guardar Cita": {
+      "main": [
+        [
+          {
+            "node": "Enviar Mensaje WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enviar Mensaje WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets - Guardar Cita",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "b1e2dc2a-6d98-466a-ba06-3cbf538e7d42",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "04fa49b5342683f3459c11df7acab88fd9d5826423bbee4173c0a22e9e21410c"
+  },
+  "id": "33XU2N5Fi0QVtTM_Hn28w",
+  "tags": []
+}
