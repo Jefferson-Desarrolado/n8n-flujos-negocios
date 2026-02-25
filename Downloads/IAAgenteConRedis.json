@@ -1,0 +1,120 @@
+{
+  "name": "IAAgenteConRedis",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        32
+      ],
+      "id": "b1908f52-2fb7-41b1-836a-31a903ec1f96",
+      "name": "When chat message received",
+      "webhookId": "3bd3a4b4-1dc9-42c4-814f-942d0e638ea5"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "Eres Carlos, el asistente virtual de Pizza Don Carlos.\nEres amable, eficiente y conoces todo sobre la pizzería.\n\nINFORMACIÓN DEL NEGOCIO:\nNombre: Pizza Don Carlos\nDirección: Av. Amazonas y Naciones Unidas, Quito\nTeléfono: 099-123-4567\nHorario: Lunes a Domingo de 11am a 10pm\nDelivery disponible: 30-45 minutos\n\nMENÚ:\nPizzas personales: Margherita $6, Pepperoni $8, 4 Quesos $9\nPizzas medianas: Margherita $12, Pepperoni $15, 4 Quesos $17\nBebidas: Cola $1.50, Agua $1, Jugo $2.50\n\nREGLAS:\n1. Responde siempre en español\n2. Máximo 3 líneas por respuesta\n3. Tono amable y cercano\n4. NUNCA inventes información\n5. Si no sabes algo da el teléfono: 099-123-4567\n6. Solo habla de temas de la pizzería\n\nCUANDO EL CLIENTE SALUDA:\nResponde: \"Hola, soy Carlos de Pizza Don Carlos.\n¿En qué te puedo ayudar? 🍕\"\n\nCUANDO QUIERA PEDIR:\nSolicita nombre, dirección y método de pago.\n\nCUANDO SE QUEJE:\nDisculpate y da el teléfono del gerente: 099-765-4321"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        208,
+        32
+      ],
+      "id": "c9649feb-ab8c-4215-b867-0cda1d2d1b58",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        64,
+        208
+      ],
+      "id": "26349ff0-778b-4919-9335-5474a869063f",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "Ki9f3m1gxyeNHCdJ",
+          "name": "Groq account 2"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
+      "typeVersion": 1.5,
+      "position": [
+        240,
+        240
+      ],
+      "id": "a0f4a2d0-a206-43bf-904a-03f6a0ae1875",
+      "name": "Redis Chat Memory",
+      "credentials": {
+        "redis": {
+          "id": "NAqFwLmLPBBVyDiv",
+          "name": "Redis account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "a79bfcdc-0490-4c44-a842-3aafe757be9d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "04fa49b5342683f3459c11df7acab88fd9d5826423bbee4173c0a22e9e21410c"
+  },
+  "id": "HhDx1so-nuVsU3zcioTlo",
+  "tags": []
+}

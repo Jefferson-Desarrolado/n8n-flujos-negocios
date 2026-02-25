@@ -1,0 +1,162 @@
+{
+  "name": "IA+REDIS+TOOLS",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        0,
+        0
+      ],
+      "id": "6e3afbae-00be-4bd2-a793-8de4edeaa8a1",
+      "name": "When chat message received",
+      "webhookId": "bda29741-1232-4aca-b64a-8070ba1d3e8b"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "Eres Carlos, asistente de ventas.\n\nHERRAMIENTA DISPONIBLE:\nTienes una herramienta llamada \"get_rows_in_sheet\"\nque contiene el catálogo completo de productos.\n\nREGLAS:\n1. Cuando el cliente pregunte por productos, precios\n   o disponibilidad, USA la herramienta obligatoriamente.\n2. NUNCA digas que no tienes información de productos.\n3. NUNCA inventes productos que no estén en el catálogo.\n4. Solo responde con lo que encuentres en la herramienta.\n5. Responde siempre en español y de forma corta.\n\nPARA SALUDOS:\nResponde sin usar herramienta:\n\"Hola, soy Carlos. ¿En qué te puedo ayudar?\""
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        208,
+        0
+      ],
+      "id": "030dae84-2007-4949-bb22-4629376d36a8",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -32,
+        256
+      ],
+      "id": "e0bae9fe-28fe-4051-ba09-ff1b55a7b997",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "Ki9f3m1gxyeNHCdJ",
+          "name": "Groq account 2"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
+      "typeVersion": 1.5,
+      "position": [
+        272,
+        304
+      ],
+      "id": "30024ef1-bd03-4aae-a216-aeec6f42d903",
+      "name": "Redis Chat Memory",
+      "credentials": {
+        "redis": {
+          "id": "NAqFwLmLPBBVyDiv",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1pfaOsE9rjd9PHStqX1ogg8pn2kG3anLbThy6fs7vSBA/edit?gid=0#gid=0",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "servicios_disponibles",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1pfaOsE9rjd9PHStqX1ogg8pn2kG3anLbThy6fs7vSBA/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        496,
+        192
+      ],
+      "id": "ee589b77-8ec4-4739-a28b-5c839cb3c562",
+      "name": "Get row(s) in sheet in Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "uJHu5gL7BRxhUSLp",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet in Google Sheets": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "3515fc1c-f750-4559-9452-c5387bbfcd3e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "04fa49b5342683f3459c11df7acab88fd9d5826423bbee4173c0a22e9e21410c"
+  },
+  "id": "6i1qFN-0BF5tTF-z2l05H",
+  "tags": []
+}

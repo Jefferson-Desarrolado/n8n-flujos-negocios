@@ -1,0 +1,92 @@
+{
+  "name": "AgenteConfInicialSinMemoriaConversacional",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chatTrigger",
+      "typeVersion": 1.4,
+      "position": [
+        -288,
+        16
+      ],
+      "id": "1ffc5fae-c6bf-4c04-b89a-cb3fb792db28",
+      "name": "When chat message received",
+      "webhookId": "2687e84e-2a59-413c-a86a-c9349f558e21"
+    },
+    {
+      "parameters": {
+        "options": {
+          "systemMessage": "Eres Carlos, el asistente virtual de Pizza Don Carlos.\nEres amable, eficiente y conoces todo sobre la pizzería.\n\nINFORMACIÓN DEL NEGOCIO:\nNombre: Pizza Don Carlos\nDirección: Av. Amazonas y Naciones Unidas, Quito\nTeléfono: 099-123-4567\nHorario: Lunes a Domingo de 11am a 10pm\nDelivery disponible: 30-45 minutos\n\nMENÚ:\nPizzas personales: Margherita $6, Pepperoni $8, 4 Quesos $9\nPizzas medianas: Margherita $12, Pepperoni $15, 4 Quesos $17\nBebidas: Cola $1.50, Agua $1, Jugo $2.50\n\nREGLAS:\n1. Responde siempre en español\n2. Máximo 3 líneas por respuesta\n3. Tono amable y cercano\n4. NUNCA inventes información\n5. Si no sabes algo da el teléfono: 099-123-4567\n6. Solo habla de temas de la pizzería\n\nCUANDO EL CLIENTE SALUDA:\nResponde: \"Hola, soy Carlos de Pizza Don Carlos.\n¿En qué te puedo ayudar? 🍕\"\n\nCUANDO QUIERA PEDIR:\nSolicita nombre, dirección y método de pago.\n\nCUANDO SE QUEJE:\nDisculpate y da el teléfono del gerente: 099-765-4321"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -80,
+        0
+      ],
+      "id": "76a90a0d-673f-4952-8282-1dfa9e80797a",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -96,
+        192
+      ],
+      "id": "87bc5d8f-15e3-40f2-b121-b962ae3ea66a",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "2UBZ23sNfNArDNUo",
+          "name": "Groq account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When chat message received": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "8f1bb033-a33e-422b-a06f-01445972be2e",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "04fa49b5342683f3459c11df7acab88fd9d5826423bbee4173c0a22e9e21410c"
+  },
+  "id": "D_PjO6qIB4KHU-A1sWfxj",
+  "tags": []
+}
