@@ -1,0 +1,1820 @@
+{
+  "name": "AI_AGENT+WHATSAPP+Alvarez-Trabajo_FIXED-v6-agendadodr de citas",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "evolution-api",
+        "options": {}
+      },
+      "id": "3eec84fe-f664-4e5f-9fd7-ec657df88098",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        1296,
+        656
+      ],
+      "webhookId": "8c611abf-a955-473d-8f78-5483374f3561"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c1",
+              "leftValue": "={{ $json.body.data.key.fromMe }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "24f4ca00-f478-4335-9efa-fb2586f18edf",
+      "name": "IF - Filtrar fromMe",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1552,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a1",
+              "name": "mensaje",
+              "type": "string",
+              "value": "={{ $json.body.data.message?.conversation || $json.body.data.message?.extendedTextMessage?.text || '[multimedia]' }}"
+            },
+            {
+              "id": "a2",
+              "name": "telefono",
+              "type": "string",
+              "value": "={{ $json.body.data.key.remoteJid }}"
+            },
+            {
+              "id": "a3",
+              "name": "nombre",
+              "type": "string",
+              "value": "={{ $json.body.data.pushName }}"
+            },
+            {
+              "id": "a4",
+              "name": "instancia",
+              "type": "string",
+              "value": "={{ $json.body.instance }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "7da635ba-20e8-4f51-a3fb-5e9dc65da3dd",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1792,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "model": "llama-3.1-8b-instant",
+        "options": {}
+      },
+      "id": "5311514f-eb16-4dc2-834a-ae9fc0c54505",
+      "name": "Groq Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        1920,
+        848
+      ],
+      "credentials": {
+        "groqApi": {
+          "id": "PBMFbrookS8PLWe4",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Edit Fields').item.json.telefono.replace(/[^a-zA-Z0-9]/g, '_') ?? 'session_default' }}",
+        "contextWindowLength": 15
+      },
+      "id": "4320df1e-5626-46cf-ade2-f43967bc8410",
+      "name": "Redis Chat Memory",
+      "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
+      "typeVersion": 1.5,
+      "position": [
+        2176,
+        848
+      ],
+      "credentials": {
+        "redis": {
+          "id": "jJISBg7GRAucstR7",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Edit Fields').item.json.mensaje }}",
+        "options": {
+          "systemMessage": "Eres un extractor de datos para un sistema de citas de barberia/estetica.\nTu UNICA funcion: analizar el mensaje + historial y devolver JSON.\n\nFECHA_HOY: {{ $now.toISO().substring(0,10) }}\nFECHA_MANANA: {{ $now.plus({days:1}).toISO().substring(0,10) }}\nFECHA_PASADO: {{ $now.plus({days:2}).toISO().substring(0,10) }}\nDIA_HOY: {{ $now.weekdayLong }}\n\nDEVUELVE SOLO este JSON (sin markdown, sin texto extra, sin backticks):\n{\"intencion\":\"otro\",\"servicio\":null,\"fecha\":null,\"hora\":null,\"mensaje_original\":\"texto\"}\n\nINTENCIONES:\nconsultar_servicios → pregunta QUE hay o cuanto CUESTA\nconsultar_cita → quiere VER o CANCELAR su cita\nagendar → tiene servicio + fecha + hora COMPLETOS (mensaje + historial)\nsolicitar_datos → quiere agendar pero FALTA alguno de: servicio, fecha, hora\notro → saludos, despedidas, multimedia, sin contexto de agenda\n\nREGLA CRITICA: USA EL HISTORIAL COMPLETO\nRevisa TODOS los mensajes anteriores:\n  - servicio mencionado en historial → reutilizalo\n  - fecha mencionada en historial → reutilizala\n  - hora mencionada en historial → reutilizala\n\nCONVERSION DE FECHAS:\n  hoy           → {{ $now.toISO().substring(0,10) }}\n  manana/mañana → {{ $now.plus({days:1}).toISO().substring(0,10) }}\n  pasado manana → {{ $now.plus({days:2}).toISO().substring(0,10) }}\n  el lunes      → proximo lunes en YYYY-MM-DD\n  el viernes    → proximo viernes en YYYY-MM-DD\n\nCONVERSION DE HORA (siempre HH:MM 24h):\n  3 pm  → 15:00\n  3pm   → 15:00\n  10am  → 10:00\n  10:30 → 10:30\n\nEJEMPLOS:\nHistorial: servicio=Corte clasico\nMensaje actual: manana 3 pm\nCORRECTO: {\"intencion\":\"agendar\",\"servicio\":\"Corte clásico\",\"fecha\":\"{{ $now.plus({days:1}).toISO().substring(0,10) }}\",\"hora\":\"15:00\",\"mensaje_original\":\"manana 3 pm\"}\n\nHistorial: servicio=Corte clasico\nMensaje actual: 2026-03-05 3 pm\nCORRECTO: {\"intencion\":\"agendar\",\"servicio\":\"Corte clásico\",\"fecha\":\"2026-03-05\",\"hora\":\"15:00\",\"mensaje_original\":\"2026-03-05 3 pm\"}\n\nHistorial: servicio=Corte clasico, fecha=2026-03-05\nMensaje actual: a las 10am\nCORRECTO: {\"intencion\":\"agendar\",\"servicio\":\"Corte clásico\",\"fecha\":\"2026-03-05\",\"hora\":\"10:00\",\"mensaje_original\":\"a las 10am\"}\n\nHistorial: vacio\nMensaje actual: manana a las 3pm\nCORRECTO: {\"intencion\":\"solicitar_datos\",\"servicio\":null,\"fecha\":\"{{ $now.plus({days:1}).toISO().substring(0,10) }}\",\"hora\":\"15:00\",\"mensaje_original\":\"manana a las 3pm\"}\n\nHistorial: vacio\nMensaje actual: hola\nCORRECTO: {\"intencion\":\"otro\",\"servicio\":null,\"fecha\":null,\"hora\":null,\"mensaje_original\":\"hola\"}\n\nREGLAS FINALES:\n1. servicio + fecha + hora presentes → intencion: agendar\n2. servicio pero falta fecha u hora → solicitar_datos\n3. Solo saludos → otro\n4. NUNCA markdown ni texto fuera del JSON\n5. fecha SIEMPRE en formato YYYY-MM-DD (ejemplo: 2026-03-05)\n6. hora SIEMPRE en formato HH:MM 24h (ejemplo: 15:00)"
+        }
+      },
+      "id": "66cb4c84-8aef-4a7b-8778-b1f68ffae92a",
+      "name": "AI Agent - Extractor",
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        2048,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// FIX v4: Reordenado fecha/hora validacion ANTES del fallback\n// Evita que placeholders literales del AI bloqueen el flujo\n// ============================================================\nconst output = $input.first().json.output || '';\nconst telefono = $('Edit Fields').first().json.telefono || '';\nconst nombre = ($('Edit Fields').first().json.nombre || '').trim();\nconst mensajeOriginal = ($('Edit Fields').first().json.mensaje || '').trim();\n\nif (mensajeOriginal === '[multimedia]') {\n  return [{ json: { intencion: 'otro', servicio: null, fecha: null, hora: null, mensaje_original: mensajeOriginal, telefono, nombre } }];\n}\n\nlet parsed = { intencion: 'otro', servicio: null, fecha: null, hora: null, mensaje_original: output };\ntry {\n  const m = output.match(/\\{[\\s\\S]*?\\}/);\n  if (m) parsed = { ...parsed, ...JSON.parse(m[0]) };\n} catch(e) { parsed.intencion = 'otro'; }\n\nconst validas = ['consultar_servicios','consultar_cita','agendar','solicitar_datos','otro'];\nif (!validas.includes(parsed.intencion)) parsed.intencion = 'otro';\n\nfunction normTexto(t) {\n  return (t||'').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').trim();\n}\nfunction addDias(base, n) {\n  const d = new Date(base + 'T12:00:00');\n  d.setDate(d.getDate() + n);\n  return d.toISOString().split('T')[0];\n}\nfunction proxDia(base, target) {\n  const d = new Date(base + 'T12:00:00');\n  let diff = target - d.getDay();\n  if (diff <= 0) diff += 7;\n  return addDias(base, diff);\n}\nfunction parseHora(txt) {\n  const t = (txt||'').toLowerCase().replace(/\\s+/g,'');\n  let m = t.match(/^(\\d{1,2}):(\\d{2})$/);\n  if (m) return m[1].padStart(2,'0') + ':' + m[2];\n  m = t.match(/^(\\d{1,2})(?::(\\d{2}))?(am|pm)$/);\n  if (m) {\n    let h = parseInt(m[1]);\n    const min = m[2] || '00';\n    if (m[3] === 'pm' && h !== 12) h += 12;\n    if (m[3] === 'am' && h === 12) h = 0;\n    return String(h).padStart(2,'0') + ':' + min;\n  }\n  return null;\n}\nfunction parseFecha(txt, hoy) {\n  const t = normTexto(txt||'');\n  if (t.includes('hoy')) return hoy;\n  if (t.includes('manana') || t.includes('mañana')) return addDias(hoy, 1);\n  if (t.includes('pasado')) return addDias(hoy, 2);\n  const dias = { lunes:1, martes:2, miercoles:3, jueves:4, viernes:5, sabado:6, domingo:0 };\n  for (const [n,v] of Object.entries(dias)) {\n    if (t.includes(n)) return proxDia(hoy, v);\n  }\n  const dm = txt.match(/(\\d{4}-\\d{2}-\\d{2})/);\n  if (dm) return dm[1];\n  return null;\n}\n\nconst HOY = new Date().toISOString().split('T')[0];\nconst msgNorm = normTexto(mensajeOriginal);\n\nif (parsed.servicio) {\n  parsed.servicio = parsed.servicio\n    .replace(/\\s*[-—]\\s*\\$[\\d.,]+/g,'')\n    .replace(/\\s*\\$[\\d.,]+/g,'')\n    .replace(/^\\*|\\*$/g,'')\n    .trim();\n}\n\n// FIX v4: PRIMERO validar formato fecha, LUEGO intentar fallback\n// Antes: el placeholder \"[VALOR MANANA]\" era truthy y saltaba el fallback\nif (parsed.fecha && !/^\\d{4}-\\d{2}-\\d{2}$/.test(parsed.fecha)) {\n  parsed.fecha = null; // invalido → limpiar para que el fallback lo capture\n}\nif (!parsed.fecha) {\n  const fd = parseFecha(mensajeOriginal, HOY);\n  if (fd) parsed.fecha = fd;\n}\n\n// FIX v4: PRIMERO validar formato hora, LUEGO intentar fallback\nif (parsed.hora) {\n  const hl = parseHora(String(parsed.hora));\n  if (hl) {\n    parsed.hora = hl;\n  } else {\n    parsed.hora = null;\n  }\n}\nif (!parsed.hora) {\n  const pats = [/(\\d{1,2}:\\d{2}\\s*(?:am|pm)?)/i, /(\\d{1,2}\\s*(?:am|pm))/i];\n  for (const p of pats) {\n    const hm = mensajeOriginal.match(p);\n    if (hm) { const hp = parseHora(hm[1]); if (hp) { parsed.hora = hp; break; } }\n  }\n}\n\nconst serviciosKnown = ['corte clasico','corte + barba','corte barba','limpieza facial','depilacion cejas','tratamiento capilar','barba','corte'];\nconst palabrasCatalogo = ['que servicios','que tienen','cuanto cuesta','cuanto cobran','ver servicios','menu','catalogo','precios','ofrecen','lista'];\nconst esConsulta = palabrasCatalogo.some(p => msgNorm.includes(p));\nconst svcEnMsg = serviciosKnown.find(s => msgNorm.includes(normTexto(s)));\n\nif (parsed.intencion === 'consultar_servicios' && svcEnMsg && !esConsulta) {\n  parsed.intencion = 'solicitar_datos';\n  if (!parsed.servicio) {\n    parsed.servicio = svcEnMsg.split(' ').map(w => w.charAt(0).toUpperCase()+w.slice(1)).join(' ')\n      .replace('Clasico','Clásico').replace('Depilacion','Depilación');\n  }\n}\n\nif (parsed.intencion === 'solicitar_datos' && parsed.servicio && parsed.fecha && parsed.hora) {\n  parsed.intencion = 'agendar';\n}\n\nif (parsed.fecha && (parsed.intencion === 'agendar' || parsed.intencion === 'solicitar_datos')) {\n  const hoyD = new Date(HOY + 'T00:00:00');\n  const fD = new Date(parsed.fecha + 'T00:00:00');\n  if (fD < hoyD) {\n    return [{ json: { intencion: 'fecha_pasada', servicio: parsed.servicio, fecha: parsed.fecha, hora: parsed.hora, mensaje_original: parsed.mensaje_original || output, telefono, nombre } }];\n  }\n}\n\nif (parsed.fecha && parsed.hora && (parsed.intencion === 'agendar' || parsed.intencion === 'solicitar_datos')) {\n  if (parsed.fecha === HOY) {\n    const ahora = new Date();\n    const [hh,mm] = parsed.hora.split(':').map(Number);\n    if ((hh*60+mm) < (ahora.getHours()*60+ahora.getMinutes()+30)) {\n      return [{ json: { intencion: 'hora_muy_pronto', servicio: parsed.servicio, fecha: parsed.fecha, hora: parsed.hora, mensaje_original: parsed.mensaje_original || output, telefono, nombre } }];\n    }\n  }\n}\n\nif (parsed.intencion === 'agendar' && (!parsed.fecha || !parsed.hora || !parsed.servicio)) {\n  parsed.intencion = 'solicitar_datos';\n}\n\nreturn [{ json: { intencion: parsed.intencion, servicio: parsed.servicio||null, fecha: parsed.fecha||null, hora: parsed.hora||null, mensaje_original: parsed.mensaje_original||output, telefono, nombre } }];"
+      },
+      "id": "90c82311-1cf3-4044-8e1b-824d388fb6c5",
+      "name": "Code - Parse Intent",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2320,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "r0",
+                    "leftValue": "={{ $json.intencion }}",
+                    "rightValue": "consultar_servicios",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "r1",
+                    "leftValue": "={{ $json.intencion }}",
+                    "rightValue": "consultar_cita",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "r2",
+                    "leftValue": "={{ $json.intencion }}",
+                    "rightValue": "agendar",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "r3",
+                    "leftValue": "={{ $json.intencion }}",
+                    "rightValue": "solicitar_datos",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "r4",
+                    "leftValue": "={{ $json.intencion }}",
+                    "rightValue": "otro",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "r5",
+                    "leftValue": "={{ $json.intencion }}",
+                    "rightValue": "fecha_pasada",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "r6",
+                    "leftValue": "={{ $json.intencion }}",
+                    "rightValue": "hora_muy_pronto",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              }
+            }
+          ]
+        },
+        "options": {
+          "fallbackOutput": 7
+        }
+      },
+      "id": "27c2b41c-0a63-46e1-8a92-700665c3ce40",
+      "name": "Switch - Intencion",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        2592,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/190Y9HZDuUGh8XMvvTFgdjkpjF1vBWEJf-gBKTC56N2I/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 0,
+          "mode": "list",
+          "cachedResultName": "servicios"
+        },
+        "options": {}
+      },
+      "id": "80f5c143-cdd8-4c06-bf68-6e6d463f0e77",
+      "name": "Get Sheets - Servicios",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2848,
+        432
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "CWfYCC0u1dEbqF3V",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst nombre = $('Edit Fields').first().json.nombre?.trim() || '';\nconst saludo = nombre ? ' ' + nombre : '';\n\n// FIX v6: filtrar items vacios de alwaysOutputData\nconst activos = items.filter(i => {\n  if (!i.json.nombre_servicio) return false;\n  const a = i.json.activo;\n  return a===true||a==='TRUE'||a==='true'||a==='VERDADERO'||a===1||a==='1';\n});\n\nif (!activos.length) return [{ json: { respuesta: 'Hola' + saludo + '! En este momento no hay servicios disponibles. Contactanos directamente 📞' } }];\nlet lista = 'Hola' + saludo + '! Aqui estan nuestros servicios 💈\\n\\n';\nfor (const item of activos) {\n  const s = item.json;\n  lista += '✅ *' + s.nombre_servicio + '* — $' + s.precio + '\\n📝 ' + s.descripcion + '\\n⏱️ Duracion: ' + s.duracion_min + ' min\\n\\n';\n}\nlista += 'Te gustaria agendar alguno? Escribeme el servicio y la fecha que prefieres 📅😊';\nreturn [{ json: { respuesta: lista } }];"
+      },
+      "id": "19b59097-4ce0-407d-bc0a-52157435e6ba",
+      "name": "Code - Format Servicios",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3104,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/190Y9HZDuUGh8XMvvTFgdjkpjF1vBWEJf-gBKTC56N2I/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1374071074,
+          "mode": "list",
+          "cachedResultName": "citas"
+        },
+        "options": {}
+      },
+      "id": "0dff9b46-9e6d-452c-af99-1fe907ddda2e",
+      "name": "Get Sheets - Citas Usuario",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2848,
+        656
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "CWfYCC0u1dEbqF3V",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst telefono = $('Code - Parse Intent').first().json.telefono || '';\nconst nombre = $('Edit Fields').first().json.nombre?.trim() || '';\nconst saludo = nombre ? ' ' + nombre : '';\n\n// FIX v6: filtrar items vacios de alwaysOutputData\nconst activas = items.filter(i => {\n  const tel=(i.json.telefono||'').toString().trim();\n  const est=(i.json.estado||'').toLowerCase().trim();\n  const hasFecha = !!i.json.fecha; // filtrar items vacios {}\n  return hasFecha && tel===telefono && est!=='cancelada' && est!=='completada' && est!=='no_asistio';\n});\n\nif (!activas.length) return [{ json: { respuesta: 'Hola' + saludo + '! No encontre citas activas para tu numero 📋\\n\\nTe gustaria agendar una nueva cita? 📅' } }];\n\nlet msg = 'Hola' + saludo + '! 📋 Tus citas agendadas:\\n\\n';\nfor (const item of activas) {\n  const c = item.json;\n  msg += '📅 Fecha: ' + c.fecha + '\\n🕐 Hora: ' + c.hora + '\\n';\n  if (c.hora_fin) msg += '🔚 Hasta: ' + c.hora_fin + '\\n';\n  msg += '💈 Servicio: ' + (c.servicio_id||c.servicio) + '\\n';\n  if (c.recurso) msg += '👤 Con: ' + c.recurso + '\\n';\n  msg += '📌 Estado: ' + c.estado + '\\n\\n';\n}\nmsg += 'Necesitas cancelar o modificar alguna? Escribeme 🤔';\nreturn [{ json: { respuesta: msg } }];"
+      },
+      "id": "0501a1a9-df74-4837-978e-c1b89d075be8",
+      "name": "Code - Format Cita Usuario",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3104,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/190Y9HZDuUGh8XMvvTFgdjkpjF1vBWEJf-gBKTC56N2I/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "horarios_especiales",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "23bb5c49-a78d-48d0-a606-8a45c5989630",
+      "name": "Get Sheets - Horarios Especiales",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        2848,
+        896
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "CWfYCC0u1dEbqF3V",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/190Y9HZDuUGh8XMvvTFgdjkpjF1vBWEJf-gBKTC56N2I/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 998730850,
+          "mode": "list",
+          "cachedResultName": "horarios_local"
+        },
+        "options": {}
+      },
+      "id": "3439f25e-8351-410c-b034-a8ca63baab42",
+      "name": "Get Sheets - Horarios Local",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        3104,
+        896
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "CWfYCC0u1dEbqF3V",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "function normHora(h) {\n  if (!h) return '00:00';\n  const p = String(h).split(':');\n  return p[0].padStart(2,'0') + ':' + (p[1]||'00').padStart(2,'0');\n}\nfunction normTexto(t) {\n  return (t||'').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').trim();\n}\nconst horariosLocal = $input.all();\nconst intent = $('Code - Parse Intent').first().json;\nconst fecha = intent.fecha || '';\nif (!fecha) return [{ json: { activo: false, motivo: 'sin_fecha' } }];\n\nlet horariosEsp = [];\ntry { horariosEsp = $('Get Sheets - Horarios Especiales').all().filter(i => !i.json.error); } catch(e) {}\n\nconst especial = horariosEsp.find(i => (i.json.fecha||'').toString().trim() === fecha);\nif (especial) {\n  const e = especial.json;\n  const actE = e.activo===true||e.activo==='TRUE'||e.activo==='true'||e.activo==='VERDADERO';\n  if (!actE) return [{ json: { activo: false, motivo: 'horario_especial_cerrado', motivoTexto: e.motivo||'Dia especial', fecha, dia: new Date(fecha+'T12:00:00').toLocaleDateString('es',{weekday:'long'}) } }];\n  return [{ json: { activo: true, esEspecial: true, abre: normHora(e.abre), cierra: normHora(e.cierra), motivo: e.motivo, fecha, capacidad: 1, intervalo: 15 } }];\n}\n\nconst diasES = ['domingo','lunes','martes','miercoles','jueves','viernes','sabado'];\nconst diaNombre = diasES[new Date(fecha+'T12:00:00').getDay()];\nconst horarioDia = horariosLocal.find(i => normTexto(i.json.dia_semana||'') === normTexto(diaNombre));\nif (!horarioDia) return [{ json: { activo: false, motivo: 'dia_no_configurado', dia: diaNombre, fecha } }];\n\nconst h = horarioDia.json;\nconst actBool = h.activo===true||h.activo==='TRUE'||h.activo==='true'||h.activo==='VERDADERO'||h.activo===1||h.activo==='1';\nconst abreN = normHora(h.abre);\nconst cierraN = normHora(h.cierra);\nconst esCerrado = !actBool || (abreN==='00:00' && cierraN==='00:00');\nreturn [{ json: { activo: !esCerrado, dia: diaNombre, abre: abreN, cierra: cierraN, capacidad: parseInt(h.capacidad_simultanea)||1, intervalo: parseInt(h.intervalo_minutos)||15, fecha } }];"
+      },
+      "id": "96301eee-57fa-48e0-abb4-7703c41c1cee",
+      "name": "Code - Check Horario",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3360,
+        896
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c-open",
+              "leftValue": "={{ $json.activo }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "8ab04eb7-5cc8-43e3-bb2d-99f8e6c92456",
+      "name": "IF - Negocio Abierto",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3616,
+        896
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const nombre = $('Edit Fields').first().json.nombre?.trim() || '';\nconst saludo = nombre ? ' ' + nombre : '';\nconst h = $('Code - Check Horario').first().json;\nconst dia = h.dia || 'ese dia';\nconst motivo = h.motivoTexto || '';\n\n// FIX v6: Leer horarios DINAMICAMENTE desde Google Sheets\n// Sin datos quemados\nlet horarioStr = '';\ntry {\n  const todosHorarios = $('Get Sheets - Horarios Local').all()\n    .map(i => i.json)\n    .filter(j => j.dia_semana); // filtrar items vacios alwaysOutputData\n  for (const hor of todosHorarios) {\n    const activo = hor.activo===true||hor.activo==='TRUE'||hor.activo==='true'||hor.activo==='VERDADERO'||hor.activo===1||hor.activo==='1';\n    const abreN = (hor.abre||'').toString().trim();\n    const cierraN = (hor.cierra||'').toString().trim();\n    const diaCapital = (hor.dia_semana||'').charAt(0).toUpperCase()+(hor.dia_semana||'').slice(1);\n    if (!activo || abreN === '0:00' || abreN === '00:00') {\n      horarioStr += `🔴 ${diaCapital}: Cerrado\\n`;\n    } else {\n      horarioStr += `🗓️ ${diaCapital}: ${abreN} - ${cierraN}\\n`;\n    }\n  }\n} catch(e) {\n  horarioStr = '(consulta nuestros horarios directamente)\\n';\n}\n\nlet msg = 'Hola' + saludo + '! Lo sentimos';\nif (motivo) msg += ', ' + motivo;\nmsg += ' — no atendemos ese día 😔\\n\\nNuestro horario:\\n' + horarioStr;\nmsg += '\\n¿Te gustaria agendar para otro día? 📅';\nreturn [{ json: { respuesta: msg } }];"
+      },
+      "id": "616574f7-3d52-4263-b08f-8818267b28f9",
+      "name": "Code - Negocio Cerrado",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3872,
+        784
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/190Y9HZDuUGh8XMvvTFgdjkpjF1vBWEJf-gBKTC56N2I/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1374071074,
+          "mode": "list",
+          "cachedResultName": "citas"
+        },
+        "options": {}
+      },
+      "id": "4c4b1805-1d4a-436b-a4d7-36be6d8b9acf",
+      "name": "Get Sheets - Citas del Dia",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        3872,
+        1008
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "CWfYCC0u1dEbqF3V",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// FIX v4 CRITICO: Google Sheets devuelve 0 items cuando la hoja esta vacia\n// n8n detiene la ejecucion si ningun item sale de un nodo.\n// Este nodo garantiza que SIEMPRE pase al menos 1 item al siguiente nodo.\nconst items = $input.all();\nif (!items || !items.length) {\n  return [{ json: { _empty_citas: true } }];\n}\nreturn items;"
+      },
+      "id": "780bd29f-7d8c-4bff-a0cb-37fe1c9fc6c6",
+      "name": "Code - Safe Citas Empty",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4048,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/190Y9HZDuUGh8XMvvTFgdjkpjF1vBWEJf-gBKTC56N2I/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 0,
+          "mode": "list",
+          "cachedResultName": "servicios"
+        },
+        "options": {}
+      },
+      "id": "0619dd86-2e7e-45ff-8a3d-a2e61415f974",
+      "name": "Get Sheets - Servicios Full",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        4224,
+        1008
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "CWfYCC0u1dEbqF3V",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/190Y9HZDuUGh8XMvvTFgdjkpjF1vBWEJf-gBKTC56N2I/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "recursos",
+          "mode": "name"
+        },
+        "options": {}
+      },
+      "id": "2b5ba5c4-aabd-488b-8c6a-f58fffeb0cdb",
+      "name": "Get Sheets - Recursos",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        4480,
+        1008
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "CWfYCC0u1dEbqF3V",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "function normHora(h) {\n  if (!h) return '00:00';\n  const p = String(h).split(':');\n  return p[0].padStart(2,'0') + ':' + (p[1]||'00').padStart(2,'0');\n}\nfunction horaAMin(h) { const p = normHora(h).split(':'); return parseInt(p[0])*60+parseInt(p[1]||0); }\nfunction minAHora(m) { return String(Math.floor(m/60)).padStart(2,'0')+':'+String(m%60).padStart(2,'0'); }\nfunction normTexto(t) { return (t||'').toLowerCase().normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').trim(); }\n\nconst recursosRaw = $input.all();\nconst serviciosItems = $('Get Sheets - Servicios Full').all()\n  .map(i => i.json)\n  .filter(j => j.nombre_servicio); // filtrar items vacios de alwaysOutputData\n\n// FIX v6: Leer citas con try-catch - si la hoja esta vacia devuelve []\n// Funciona tanto con 0 items como con items reales\nlet citasItems = [];\ntry {\n  citasItems = $('Get Sheets - Citas del Dia').all()\n    .map(i => i.json)\n    .filter(j => j.fecha && j.estado); // solo citas reales\n} catch(e) {\n  citasItems = [];\n}\n\nconst intent = $('Code - Parse Intent').first().json;\nconst horarioInfo = $('Code - Check Horario').first().json;\n\nlet recursosItems = recursosRaw.filter(i => !i.json.error && i.json.nombre).map(i => i.json);\nif (!recursosItems.length) recursosItems = [{ nombre: 'General', activo: true, especialidad: '' }];\n\nconst horaInput = normHora(intent.hora || '09:00');\nconst fechaInput = intent.fecha || '';\nconst servNorm = normTexto(intent.servicio || '');\nconst telefono = intent.telefono || '';\nconst nombre = $('Edit Fields').first().json.nombre?.trim() || '';\n\nconst reservaId = Date.now().toString() + Math.floor(Math.random() * 9999).toString().padStart(4,'0');\n\nconst servicioData = serviciosItems.find(s => {\n  const act = s.activo===true||s.activo==='TRUE'||s.activo==='true'||s.activo==='VERDADERO';\n  if (!act) return false;\n  const sn = normTexto(s.nombre_servicio || '');\n  return sn === servNorm || sn.includes(servNorm) || servNorm.includes(sn);\n});\n\nif (!servicioData) {\n  return [{ json: { hayConflicto: true, motivoConflicto: 'servicio_no_encontrado', fecha: fechaInput, servicio: intent.servicio, telefono, nombre, reservaId } }];\n}\n\nconst duracion = parseInt(servicioData.duracion_min) || 30;\nconst buffer = parseInt(servicioData.buffer_min) || 0;\nconst duracionTotal = duracion + buffer;\nconst precio = servicioData.precio;\nconst nombreSvc = servicioData.nombre_servicio;\nconst nImin = horaAMin(horaInput);\nconst nFmin = nImin + duracionTotal;\nconst nuevaInicio = horaInput;\nconst nuevaFin = minAHora(nFmin);\n\nconst abreMin = horaAMin(horarioInfo.abre || '09:00');\nconst cierraMin = horaAMin(horarioInfo.cierra || '18:00');\nconst capacidad = parseInt(horarioInfo.capacidad) || 1;\nconst intervalo = parseInt(horarioInfo.intervalo) || 15;\n\nif (nImin < abreMin || nFmin > cierraMin) {\n  return [{ json: { hayConflicto: true, motivoConflicto: 'fuera_horario', nuevaInicio, nuevaFin, duracion, duracionTotal, buffer, precioServicio: precio, siguienteHora: horarioInfo.abre, siguienteHoraFin: minAHora(horaAMin(horarioInfo.abre)+duracionTotal), fecha: fechaInput, servicio: nombreSvc, telefono, nombre, reservaId, horarioAbre: horarioInfo.abre, horarioCierra: horarioInfo.cierra } }];\n}\n\nif (intervalo > 1) {\n  const minDesde = nImin - abreMin;\n  if (minDesde % intervalo !== 0) {\n    const prev = Math.floor(minDesde/intervalo)*intervalo;\n    const next = prev + intervalo;\n    return [{ json: { hayConflicto: true, motivoConflicto: 'fuera_intervalo', nuevaInicio, nuevaFin, duracion, duracionTotal, buffer, precioServicio: precio, horaCorrecta1: minAHora(abreMin+prev), horaCorrecta2: minAHora(abreMin+next), intervalo, fecha: fechaInput, servicio: nombreSvc, telefono, nombre, reservaId, horarioAbre: horarioInfo.abre, horarioCierra: horarioInfo.cierra } }];\n  }\n}\n\nconst citasDia = citasItems.filter(c => {\n  if ((c.fecha||'').toString().trim() !== fechaInput) return false;\n  const est = (c.estado||'').toLowerCase();\n  return est !== 'cancelada' && est !== 'completada' && est !== 'no_asistio';\n});\n\nconst recursosActivos = recursosItems.filter(r => r.activo===true||r.activo==='TRUE'||r.activo==='true'||r.activo==='VERDADERO');\nlet recursoAsignado = null;\nlet ultimaFinMin = nFmin;\n\nfor (const recurso of recursosActivos) {\n  const citasRec = citasDia.filter(c => normTexto(c.recurso||'general') === normTexto(recurso.nombre||'general'));\n  let libre = true;\n  let maxFin = 0;\n  for (const cita of citasRec) {\n    let cFmin;\n    if (cita.hora_fin) {\n      cFmin = horaAMin(cita.hora_fin);\n    } else {\n      const sd = serviciosItems.find(s => normTexto(s.nombre_servicio) === normTexto(cita.servicio_id||cita.servicio||''));\n      const dur = sd ? (parseInt(sd.duracion_min)||30)+(parseInt(sd.buffer_min)||0) : 30;\n      cFmin = horaAMin(cita.hora||'00:00') + dur;\n    }\n    const cImin = horaAMin(cita.hora||'00:00');\n    if (nImin < cFmin && nFmin > cImin) { libre = false; if (cFmin > maxFin) maxFin = cFmin; }\n  }\n  const enBloque = citasDia.filter(c => {\n    const cImin = horaAMin(c.hora||'00:00');\n    const sd = serviciosItems.find(s => normTexto(s.nombre_servicio) === normTexto(c.servicio_id||c.servicio||''));\n    const dur = sd ? (parseInt(sd.duracion_min)||30)+(parseInt(sd.buffer_min)||0) : 30;\n    return nImin < cImin+dur && nFmin > cImin;\n  });\n  if (enBloque.length >= capacidad) {\n    libre = false;\n    for (const c of enBloque) {\n      const sd = serviciosItems.find(s => normTexto(s.nombre_servicio) === normTexto(c.servicio_id||c.servicio||''));\n      const dur = sd ? (parseInt(sd.duracion_min)||30)+(parseInt(sd.buffer_min)||0) : 30;\n      const cFmin = horaAMin(c.hora||'00:00') + dur;\n      if (cFmin > maxFin) maxFin = cFmin;\n    }\n  }\n  if (libre) { recursoAsignado = recurso.nombre; break; }\n  if (maxFin > ultimaFinMin) ultimaFinMin = maxFin;\n}\n\nif (!recursoAsignado) {\n  const sigMin = ultimaFinMin + intervalo;\n  return [{ json: { hayConflicto: true, motivoConflicto: 'hora_ocupada', nuevaInicio, nuevaFin, duracion, duracionTotal, buffer, precioServicio: precio, siguienteHora: minAHora(sigMin), siguienteHoraFin: minAHora(sigMin+duracionTotal), fecha: fechaInput, servicio: nombreSvc, telefono, nombre, reservaId, horarioAbre: horarioInfo.abre, horarioCierra: horarioInfo.cierra } }];\n}\n\nreturn [{ json: { hayConflicto: false, motivoConflicto: null, nuevaInicio, nuevaFin, duracion, duracionTotal, buffer, precioServicio: precio, siguienteHora: null, siguienteHoraFin: null, fecha: fechaInput, servicio: nombreSvc, recurso: recursoAsignado, telefono, nombre, reservaId, horarioAbre: horarioInfo.abre, horarioCierra: horarioInfo.cierra } }];"
+      },
+      "id": "4cd61ad2-b47f-4790-9458-3a8c0518a47c",
+      "name": "Code - Validar Solapamiento",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4736,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c-conf",
+              "leftValue": "={{ $json.hayConflicto }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "fc03bdc3-59a0-4bfa-9a76-201ff30ae352",
+      "name": "IF - Hay Conflicto",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4992,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const d = $input.first().json;\nconst saludo = d.nombre ? ' ' + d.nombre : '';\nlet respuesta = '';\nif (d.motivoConflicto === 'servicio_no_encontrado') {\n  respuesta = 'Hola' + saludo + '! No encontre el servicio *' + d.servicio + '* en nuestro catalogo 😔\\n\\nEscribe *ver servicios* para ver opciones disponibles 💈';\n} else if (d.motivoConflicto === 'fuera_horario') {\n  respuesta = 'Hola' + saludo + '! La hora ' + d.nuevaInicio + ' esta fuera de nuestro horario 😔\\n\\nAtendemos de ' + d.horarioAbre + ' a ' + d.horarioCierra + '.\\n\\nTe sugiero el primer turno a las *' + d.siguienteHora + '*. Te parece bien? 😊';\n} else if (d.motivoConflicto === 'fuera_intervalo') {\n  respuesta = 'Hola' + saludo + '! Agendamos cada ' + d.intervalo + ' minutos 😊\\n\\nPara tu servicio puedes elegir:\\n⏰ *' + d.horaCorrecta1 + '*\\n⏰ *' + d.horaCorrecta2 + '*\\n\\nCual prefieres?';\n} else {\n  respuesta = 'Hola' + saludo + '! El horario de las ' + d.nuevaInicio + ' del ' + d.fecha + ' ya esta ocupado 😔\\n\\nEl siguiente turno disponible es a las *' + d.siguienteHora + '* hasta ' + d.siguienteHoraFin + '.\\n\\nTe viene bien? 😊';\n}\nreturn [{ json: { respuesta } }];"
+      },
+      "id": "a5e9d57e-8410-4737-b7fe-ede2c05c7c73",
+      "name": "Code - Sugerir Alternativa",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5248,
+        896
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/190Y9HZDuUGh8XMvvTFgdjkpjF1vBWEJf-gBKTC56N2I/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "citas",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.reservaId }}",
+            "fecha": "={{ $json.fecha }}",
+            "hora": "={{ $json.nuevaInicio }}",
+            "hora_fin": "={{ $json.nuevaFin }}",
+            "duracion_total_min": "={{ $json.duracionTotal }}",
+            "cliente_nombre": "={{ $json.nombre }}",
+            "telefono": "={{ $json.telefono }}",
+            "servicio_id": "={{ $json.servicio }}",
+            "recurso": "={{ $json.recurso }}",
+            "estado": "pendiente",
+            "fecha_creacion": "={{ $now.format('YYYY-MM-DD HH:mm:ss') }}",
+            "canal": "whatsapp",
+            "observaciones": "",
+            "recordatorio_enviado": "FALSE"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha",
+              "displayName": "fecha",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "hora",
+              "displayName": "hora",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "hora_fin",
+              "displayName": "hora_fin",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "duracion_total_min",
+              "displayName": "duracion_total_min",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "cliente_nombre",
+              "displayName": "cliente_nombre",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "telefono",
+              "displayName": "telefono",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "servicio_id",
+              "displayName": "servicio_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "recurso",
+              "displayName": "recurso",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "fecha_creacion",
+              "displayName": "fecha_creacion",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "canal",
+              "displayName": "canal",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "observaciones",
+              "displayName": "observaciones",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "recordatorio_enviado",
+              "displayName": "recordatorio_enviado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "87e6c8eb-e157-465c-8f52-cd7df8a0741d",
+      "name": "Append Row - Nueva Cita",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        5248,
+        1120
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "CWfYCC0u1dEbqF3V",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "id": "0ced4b9b-d866-4f03-a54d-3c411d712af0",
+      "name": "Wait - Anti Race Condition",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        5376,
+        1264
+      ],
+      "webhookId": "5603f063-1481-482c-a42b-14b2f6cd113f"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/190Y9HZDuUGh8XMvvTFgdjkpjF1vBWEJf-gBKTC56N2I/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 1374071074,
+          "mode": "list",
+          "cachedResultName": "citas"
+        },
+        "options": {}
+      },
+      "id": "c42e16f1-d844-4990-bce7-49f59d19c26b",
+      "name": "Get Sheets - Recheck Slot",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        5504,
+        1120
+      ],
+      "alwaysOutputData": true,
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "CWfYCC0u1dEbqF3V",
+          "name": "Google Sheets account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// FIX v4: Igual que Safe Citas Empty — garantiza que el flujo continue\n// incluso si la hoja de citas no devuelve filas (primera reserva del dia)\nconst items = $input.all();\nif (!items || !items.length) {\n  return [{ json: { _empty_recheck: true } }];\n}\nreturn items;"
+      },
+      "id": "4a1f8cd5-f367-451e-8880-1a99be8410f8",
+      "name": "Code - Safe Recheck Empty",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5664,
+        1120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "function horaAMin(h) {\n  const p = (h||'00:00').split(':');\n  return parseInt(p[0])*60+parseInt(p[1]||0);\n}\n// FIX v6: filtrar items vacios de alwaysOutputData antes de buscar competidores\nconst allCitas = $input.all()\n  .map(i => i.json)\n  .filter(j => j.fecha && j.estado); // solo citas reales\n\nconst intent = $('Code - Validar Solapamiento').first().json;\nconst reservaId = intent.reservaId;\nconst fecha = intent.fecha;\nconst nImin = horaAMin(intent.nuevaInicio);\nconst nFmin = horaAMin(intent.nuevaFin);\n\nconst competidores = allCitas.filter(c => {\n  if (c.fecha !== fecha) return false;\n  if (String(c.id) === String(reservaId)) return false;\n  const est = (c.estado||'').toLowerCase();\n  if (est === 'cancelada' || est === 'completada') return false;\n  if ((c.recurso||'').toLowerCase() !== (intent.recurso||'').toLowerCase()) return false;\n  const cImin = horaAMin(c.hora||'00:00');\n  const cFmin = cImin + (parseInt(c.duracion_total_min)||60);\n  return nImin < cFmin && nFmin > cImin;\n});\n\nif (!competidores.length) return [{ json: { ...intent, raceOK: true } }];\n\nconst minId = competidores\n  .map(c => BigInt(String(c.id).replace(/\\D/g,'') || '0'))\n  .reduce((a,b) => a < b ? a : b);\nconst myId = BigInt(String(reservaId).replace(/\\D/g,'') || '0');\n\nif (myId <= minId) return [{ json: { ...intent, raceOK: true } }];\nreturn [{ json: { ...intent, raceOK: false } }];"
+      },
+      "id": "eb80705f-ae07-494c-af6d-50804c48b3e7",
+      "name": "Code - Resolver Race Condition",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        5856,
+        1120
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c-race",
+              "leftValue": "={{ $json.raceOK }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0f3d523f-5233-4ac8-9053-f82ad7bd4c79",
+      "name": "IF - Race OK",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        6112,
+        1120
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/190Y9HZDuUGh8XMvvTFgdjkpjF1vBWEJf-gBKTC56N2I/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "citas",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.reservaId }}",
+            "estado": "confirmada"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "43b85f31-d322-4b15-95e6-04ff73c2f370",
+      "name": "Update Row - Confirmar Reserva",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        6368,
+        1008
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "CWfYCC0u1dEbqF3V",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/190Y9HZDuUGh8XMvvTFgdjkpjF1vBWEJf-gBKTC56N2I/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "citas",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.reservaId }}",
+            "estado": "cancelada"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "estado",
+              "displayName": "estado",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "cf69e929-79aa-4722-b152-99323cee4589",
+      "name": "Update Row - Cancelar Reserva",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "position": [
+        6368,
+        1232
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "CWfYCC0u1dEbqF3V",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const v = $('Code - Validar Solapamiento').first().json;\nconst saludo = v.nombre ? ' ' + v.nombre : '';\nreturn [{ json: { respuesta:\n  'Listo' + saludo + '! Tu cita ha sido confirmada ✅\\n\\n' +\n  '📅 Fecha: ' + v.fecha + '\\n' +\n  '🕐 Hora: ' + v.nuevaInicio + ' - ' + v.nuevaFin + '\\n' +\n  '⏱️ Duracion: ' + v.duracion + ' min' + (v.buffer ? ' + ' + v.buffer + ' min preparacion' : '') + '\\n' +\n  '💈 Servicio: ' + v.servicio + '\\n' +\n  '👤 Atendera: ' + v.recurso + '\\n' +\n  '💰 Precio: $' + v.precioServicio + '\\n\\n' +\n  'Te esperamos puntual 😊 Necesitas algo mas? 🤔'\n}}];"
+      },
+      "id": "f72b4de8-ceb7-40a6-af47-a229e62a950f",
+      "name": "Code - Confirmar Cita",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6624,
+        1008
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const v = $('Code - Validar Solapamiento').first().json;\nconst saludo = v.nombre ? ' ' + v.nombre : '';\nreturn [{ json: { respuesta:\n  'Hola' + saludo + '! En este momento otro cliente acabo de reservar el turno de las ' + v.nuevaInicio + ' del ' + v.fecha + ' 😔\\n\\n' +\n  'El siguiente turno disponible es a las *' + (v.siguienteHora || 'consultar') + '*.\\n\\nTe viene bien ese horario? 😊'\n}}];"
+      },
+      "id": "7da8e517-aa27-4e86-b16f-53ec130dfd69",
+      "name": "Code - Cita Race Perdida",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6624,
+        1232
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// FIX v6: Servicios leidos DINAMICAMENTE desde Google Sheets\n// Sin datos quemados en el codigo\nconst intent = $('Code - Parse Intent').first().json;\nconst saludo = intent.nombre ? ' ' + intent.nombre : '';\n\nlet msg = '';\n\nif (!intent.servicio) {\n  // Leer servicios activos desde la hoja de calculo\n  let listaServicios = '';\n  try {\n    const servicios = $input.all()\n      .map(i => i.json)\n      .filter(j => {\n        if (!j.nombre_servicio) return false;\n        const act = j.activo===true||j.activo==='TRUE'||j.activo==='true'||j.activo==='VERDADERO'||j.activo===1||j.activo==='1';\n        return act;\n      });\n    for (const s of servicios) {\n      listaServicios += `✅ *${s.nombre_servicio}* — $${s.precio} (${s.duracion_min} min)\\n`;\n    }\n  } catch(e) {\n    listaServicios = '(ver servicios disponibles escribiendo *ver servicios*)\\n';\n  }\n  msg = `Para que servicio quieres tu cita${saludo}? 💈\\n\\nNuestras opciones:\\n${listaServicios}\\nEscribe el nombre del servicio 😊`;\n\n} else if (!intent.fecha && !intent.hora) {\n  msg = `Perfecto${saludo}! Agendamos tu *${intent.servicio}* 💈\\n\\n¿Para cuándo y a qué hora?\\n\\nEscríbelo todo junto:\\n• *mañana a las 10am*\\n• *el viernes a las 3pm*\\n• *2026-03-05 a las 15:00*`;\n\n} else if (!intent.fecha) {\n  msg = `¿Para qué fecha quieres tu *${intent.servicio}* a las *${intent.hora}*? 📅\\n\\nEjemplos: mañana, el lunes, el viernes, 2026-03-05`;\n\n} else if (!intent.hora) {\n  msg = `¿A qué hora quieres tu *${intent.servicio}* el *${intent.fecha}*? 🕐\\n\\nEjemplos: *10am*, *3pm*, *15:00*`;\n}\n\nreturn [{ json: { respuesta: msg } }];"
+      },
+      "id": "02a8ec7c-a849-4dcd-8fea-1d5e68896c54",
+      "name": "Code - Solicitar Datos",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3104,
+        1120
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const intent = $('Code - Parse Intent').first().json;\nconst saludo = intent.nombre ? ' ' + intent.nombre : '';\nconst msg = (intent.mensaje_original || '').toLowerCase().trim();\nconst esDespedida = ['adios','chao','bye','hasta luego','gracias','ok listo','perfecto','de nada','listo'].some(d => msg.includes(d));\nconst esSaludo = ['hola','buenas','buenos','hi','hey','buen dia','buenas noches','buenas tardes'].some(s => msg.includes(s));\nconst esCorto = msg.length <= 3;\nlet respuesta;\nif (esDespedida) {\n  respuesta = 'Hasta luego' + saludo + '! Fue un placer atenderte 😊👋\\n¡Que tengas un excelente día!';\n} else if (esSaludo) {\n  respuesta = 'Hola' + saludo + '! 😊👋 Bienvenido a nuestra barbería/estética.\\n\\n¿En qué te puedo ayudar?\\n\\n📋 Escribe *ver servicios* — para ver precios\\n📅 Escribe *quiero agendar* — para reservar una cita\\n🔍 Escribe *ver mi cita* — para consultar tu cita';\n} else if (msg === '[multimedia]') {\n  respuesta = 'Hola' + saludo + '! 😊 Solo proceso mensajes de texto.\\n\\n📋 *ver servicios* | 📅 *quiero agendar* | 🔍 *ver mi cita*';\n} else if (esCorto) {\n  respuesta = 'Hola' + saludo + '! 😊 No entendí bien.\\n\\nPuedo ayudarte con:\\n📋 *ver servicios*\\n📅 *quiero agendar*\\n🔍 *ver mi cita*';\n} else {\n  respuesta = 'Hola' + saludo + '! 😊 No entendí bien tu mensaje.\\n\\n¿Quieres agendar una cita o ver los servicios?\\n\\n📋 *ver servicios*\\n📅 *quiero agendar*\\n🔍 *ver mi cita*';\n}\nreturn [{ json: { respuesta } }];"
+      },
+      "id": "c62b82b2-7f02-4f2c-9c22-4017cd33622f",
+      "name": "Code - Respuesta General",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2848,
+        1312
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const intent = $('Code - Parse Intent').first().json;\nconst saludo = intent.nombre ? ' ' + intent.nombre : '';\nreturn [{ json: { respuesta: 'Lo siento' + saludo + '! No puedo agendar citas en fechas pasadas 📅\\n\\nLa fecha ' + intent.fecha + ' ya paso.\\n\\n¿Para qué fecha quieres tu cita? Dime una fecha futura 😊' }}];"
+      },
+      "id": "d23a041d-3313-4797-9549-ff975ebedd99",
+      "name": "Code - Fecha Pasada",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2848,
+        1504
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const intent = $('Code - Parse Intent').first().json;\nconst saludo = intent.nombre ? ' ' + intent.nombre : '';\nconst ahora = new Date();\nconst totalMin = ahora.getHours()*60 + ahora.getMinutes() + 30;\nconst hh = Math.floor(totalMin/60) % 24;\nconst mm = totalMin % 60;\nconst horaMin = String(hh).padStart(2,'0') + ':' + String(mm).padStart(2,'0');\nreturn [{ json: { respuesta: 'Lo siento' + saludo + '! Necesitamos al menos 30 minutos de anticipacion ⏰\\n\\nLas ' + intent.hora + ' esta muy cerca. La hora minima para hoy es aproximadamente *' + horaMin + '*.\\n\\n¿A que hora te viene mejor? 😊' }}];"
+      },
+      "id": "64a62545-3c66-4ed6-887d-95c62a8a0b48",
+      "name": "Code - Hora Muy Pronto",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2848,
+        1616
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// FIX v5 — BUG CRITICO: telefono llegaba como JID de WhatsApp\n// Ej: '593959186832@s.whatsapp.net' → Evolution API lo rechazaba\n// silenciosamente devolviendo 200 OK pero sin enviar el mensaje.\n// Fix: strip del sufijo JID antes de enviar.\n// ============================================================\nconst respuesta = $input.first().json.respuesta || 'Lo siento, ocurrio un error. Por favor intenta de nuevo';\nconst telefonoRaw = $('Edit Fields').first().json.telefono || '';\nconst nombre = $('Edit Fields').first().json.nombre || '';\n\n// Limpiar texto: mantener printables + newlines\nlet textoLimpio = '';\nfor (let i = 0; i < respuesta.length; i++) {\n  const c = respuesta.charCodeAt(i);\n  if (c === 10 || (c >= 32 && c !== 127)) textoLimpio += respuesta[i];\n}\ntextoLimpio = textoLimpio.trim();\n\n// FIX v5: Limpiar telefono extrayendo SOLO digitos del JID\n// Soporta: '593959186832@s.whatsapp.net', '593959186832@c.us', '+593959186832', '593959186832'\nlet telLimpio = telefonoRaw\n  .replace(/@s\\.whatsapp\\.net$/i, '')   // quitar sufijo JID estandar\n  .replace(/@c\\.us$/i, '')              // quitar sufijo alternativo Evolution\n  .replace(/@.*$/, '')                  // quitar cualquier otro sufijo @...\n  .replace(/[^0-9]/g, '')              // dejar solo digitos\n  .trim();\n\n// Validaciones finales\nif (!textoLimpio) textoLimpio = 'Lo siento, no pude procesar tu solicitud. Por favor intenta de nuevo';\nif (!telLimpio || telLimpio.length < 7) throw new Error('Telefono invalido o vacio: ' + telefonoRaw);\nif (textoLimpio.length > 4000) textoLimpio = textoLimpio.substring(0, 3997) + '...';\n\nreturn [{ json: { telefono: telLimpio, texto: textoLimpio, nombre, telefonoOriginal: telefonoRaw } }];"
+      },
+      "id": "a43c1be9-2152-4ab4-83a6-51650d5d9512",
+      "name": "Code - Preparar Mensaje",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        6880,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution-api:8080/message/sendText/Jefferson",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "apikey",
+              "value": "MiClaveSecreta2026XYZ"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "number",
+              "value": "={{ $json.telefono }}"
+            },
+            {
+              "name": "text",
+              "value": "={{ $json.texto }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fa01c444-a4f2-4954-88e0-848db437c245",
+      "name": "HTTP Request - WhatsApp",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        7136,
+        656
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/190Y9HZDuUGh8XMvvTFgdjkpjF1vBWEJf-gBKTC56N2I/edit",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 0,
+          "mode": "list",
+          "cachedResultName": "servicios"
+        },
+        "options": {}
+      },
+      "id": "524f741b-2e2e-4b4d-a4b9-beeb6f88861b",
+      "name": "Get Sheets - Servicios SD",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.5,
+      "alwaysOutputData": true,
+      "position": [
+        2848,
+        1120
+      ],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "CWfYCC0u1dEbqF3V",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "IF - Filtrar fromMe",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Filtrar fromMe": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "AI Agent - Extractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent - Extractor",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent - Extractor",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent - Extractor": {
+      "main": [
+        [
+          {
+            "node": "Code - Parse Intent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Parse Intent": {
+      "main": [
+        [
+          {
+            "node": "Switch - Intencion",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Switch - Intencion": {
+      "main": [
+        [
+          {
+            "node": "Get Sheets - Servicios",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Sheets - Citas Usuario",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Sheets - Horarios Especiales",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Get Sheets - Servicios SD",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code - Respuesta General",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code - Fecha Pasada",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code - Hora Muy Pronto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Sheets - Servicios": {
+      "main": [
+        [
+          {
+            "node": "Code - Format Servicios",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Format Servicios": {
+      "main": [
+        [
+          {
+            "node": "Code - Preparar Mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Sheets - Citas Usuario": {
+      "main": [
+        [
+          {
+            "node": "Code - Format Cita Usuario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Format Cita Usuario": {
+      "main": [
+        [
+          {
+            "node": "Code - Preparar Mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Sheets - Horarios Especiales": {
+      "main": [
+        [
+          {
+            "node": "Get Sheets - Horarios Local",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Sheets - Horarios Local": {
+      "main": [
+        [
+          {
+            "node": "Code - Check Horario",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Check Horario": {
+      "main": [
+        [
+          {
+            "node": "IF - Negocio Abierto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Negocio Abierto": {
+      "main": [
+        [
+          {
+            "node": "Get Sheets - Citas del Dia",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get Sheets - Servicios Full",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code - Negocio Cerrado",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Negocio Cerrado": {
+      "main": [
+        [
+          {
+            "node": "Code - Preparar Mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Sheets - Servicios Full": {
+      "main": [
+        [
+          {
+            "node": "Get Sheets - Recursos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Sheets - Recursos": {
+      "main": [
+        [
+          {
+            "node": "Code - Validar Solapamiento",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Validar Solapamiento": {
+      "main": [
+        [
+          {
+            "node": "IF - Hay Conflicto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Hay Conflicto": {
+      "main": [
+        [
+          {
+            "node": "Code - Sugerir Alternativa",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Append Row - Nueva Cita",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Sugerir Alternativa": {
+      "main": [
+        [
+          {
+            "node": "Code - Preparar Mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Row - Nueva Cita": {
+      "main": [
+        [
+          {
+            "node": "Wait - Anti Race Condition",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait - Anti Race Condition": {
+      "main": [
+        [
+          {
+            "node": "Get Sheets - Recheck Slot",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Sheets - Recheck Slot": {
+      "main": [
+        [
+          {
+            "node": "Code - Safe Recheck Empty",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Safe Recheck Empty": {
+      "main": [
+        [
+          {
+            "node": "Code - Resolver Race Condition",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Resolver Race Condition": {
+      "main": [
+        [
+          {
+            "node": "IF - Race OK",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF - Race OK": {
+      "main": [
+        [
+          {
+            "node": "Update Row - Confirmar Reserva",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update Row - Cancelar Reserva",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Row - Confirmar Reserva": {
+      "main": [
+        [
+          {
+            "node": "Code - Confirmar Cita",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Row - Cancelar Reserva": {
+      "main": [
+        [
+          {
+            "node": "Code - Cita Race Perdida",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Confirmar Cita": {
+      "main": [
+        [
+          {
+            "node": "Code - Preparar Mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Cita Race Perdida": {
+      "main": [
+        [
+          {
+            "node": "Code - Preparar Mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Solicitar Datos": {
+      "main": [
+        [
+          {
+            "node": "Code - Preparar Mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Respuesta General": {
+      "main": [
+        [
+          {
+            "node": "Code - Preparar Mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Fecha Pasada": {
+      "main": [
+        [
+          {
+            "node": "Code - Preparar Mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Hora Muy Pronto": {
+      "main": [
+        [
+          {
+            "node": "Code - Preparar Mensaje",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Preparar Mensaje": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request - WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Sheets - Servicios SD": {
+      "main": [
+        [
+          {
+            "node": "Code - Solicitar Datos",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "707924e5-956d-4768-95c4-543eb8382309",
+  "meta": {
+    "instanceId": "04fa49b5342683f3459c11df7acab88fd9d5826423bbee4173c0a22e9e21410c"
+  },
+  "id": "gPJxdsMDNdvmkotA",
+  "tags": [
+    {
+      "updatedAt": "2026-02-27T03:06:40.020Z",
+      "createdAt": "2026-02-27T03:06:40.020Z",
+      "id": "4MtdmM3ZU5vESYeo",
+      "name": "FIXED-v2"
+    },
+    {
+      "updatedAt": "2026-02-27T03:24:07.230Z",
+      "createdAt": "2026-02-27T03:24:07.230Z",
+      "id": "pUi4f9zAmdzR0f3G",
+      "name": "FIXED-v3"
+    },
+    {
+      "updatedAt": "2026-02-27T03:39:53.154Z",
+      "createdAt": "2026-02-27T03:39:53.154Z",
+      "id": "mFW23btBc33uOpeb",
+      "name": "FIXED-v4"
+    },
+    {
+      "updatedAt": "2026-02-27T03:43:45.572Z",
+      "createdAt": "2026-02-27T03:43:45.572Z",
+      "id": "IPHLx5Df0CcgRlGy",
+      "name": "FIXED-v5"
+    },
+    {
+      "updatedAt": "2026-02-27T03:58:59.702Z",
+      "createdAt": "2026-02-27T03:58:59.702Z",
+      "id": "dtITumNTveWbFmfw",
+      "name": "FIXED-v6"
+    }
+  ]
+}
