@@ -1,0 +1,334 @@
+{
+  "name": "AI_AGENT+WHATSAPP+Lectura-excel",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "evolution-api",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2.1,
+      "position": [
+        -672,
+        128
+      ],
+      "id": "77db56d2-fcdc-4715-b503-db666a7ac47b",
+      "name": "Webhook",
+      "webhookId": "8c611abf-a955-473d-8f78-5483374f3561"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "fe86f805-3a0c-4331-9a8e-1c0c479090e1",
+              "leftValue": "={{ $json.body.data.key.fromMe }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "false",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -384,
+        112
+      ],
+      "id": "262ec3b8-721a-43fe-837b-3cf876e0673a",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "f142c027-2466-460d-a5c9-08736831cfef",
+              "name": "mensaje",
+              "value": "={{ $json.body.data.message.conversation }}",
+              "type": "string"
+            },
+            {
+              "id": "09faa7d2-a48c-4e56-b0fa-b0b405e94427",
+              "name": "telefono",
+              "value": "={{ $json.body.data.key.remoteJid }}",
+              "type": "string"
+            },
+            {
+              "id": "d80b587b-a785-4780-9a36-bbfa2a561c1b",
+              "name": "nombre",
+              "value": "=  {{ $json.body.data.pushName }}",
+              "type": "string"
+            },
+            {
+              "id": "f11f8652-2f29-42c0-b96f-f24baac68634",
+              "name": "instancia",
+              "value": "={{ $json.body.instance }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -208,
+        48
+      ],
+      "id": "a9119cba-22cf-43fc-bff9-731a15fa7381",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "={{ $('Edit Fields').item.json.mensaje }}",
+        "options": {
+          "systemMessage": "Eres un asistente virtual amable y profesional 😊\n\n═══════════════════════════════════\n🔴 REGLA NÚMERO 1 — OBLIGATORIA:\n═══════════════════════════════════\nSIEMPRE usa la herramienta Google Sheets antes de \nresponder cualquier pregunta sobre:\n- Servicios disponibles\n- Precios\n- Disponibilidad de productos\nNUNCA respondas precios ni servicios de memoria.\nNUNCA inventes información.\n\n═══════════════════════════════════\n😊 PERSONALIDAD:\n═══════════════════════════════════\n- Usa emojis naturalmente en cada mensaje\n- Sé cálido, cercano y entusiasta\n- Responde SIEMPRE en español\n- Máximo 5 líneas por respuesta\n- Saluda al usuario por su nombre si lo tienes\n\n═══════════════════════════════════\n📋 FORMATO para listar servicios:\n═══════════════════════════════════\n✅ [Producto] — [Precio tal como aparece en Sheets]\n📝 [Descripción]\n\n═══════════════════════════════════\n⚠️ MANEJO DE PRECIOS:\n═══════════════════════════════════\n- Los precios en Google Sheets pueden venir con $ \n  ejemplo: \"$8\". Muéstralos exactamente como están.\n- Si un precio parece incorrecto, consulta Sheets \n  de nuevo antes de responder.\n\n═══════════════════════════════════\n❓ CUANDO NO ENCUENTRES ALGO:\n═══════════════════════════════════\n1. Consulta Google Sheets primero\n2. Si no está en Sheets, di amablemente que \n   no tienes ese servicio disponible\n3. Nunca digas \"no tengo información\" sin \n   haber consultado Sheets antes\n\n═══════════════════════════════════\n✅ REGLAS FINALES:\n═══════════════════════════════════\n- Termina cada respuesta con una pregunta amable\n- Si el usuario saluda, salúdalo por su nombre 👋\n- Nunca inventes precios ni información\n- Siempre consulta Sheets antes de responder"
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        0,
+        32
+      ],
+      "id": "4d800d81-6e65-4c80-97a8-7141a66b4943",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "model": "llama-3.3-70b-versatile",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGroq",
+      "typeVersion": 1,
+      "position": [
+        -128,
+        240
+      ],
+      "id": "1cbcc7b6-87ca-45ce-a27b-a086686b43bb",
+      "name": "Groq Chat Model",
+      "credentials": {
+        "groqApi": {
+          "id": "PBMFbrookS8PLWe4",
+          "name": "Groq account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "sessionIdType": "customKey",
+        "sessionKey": "={{ $('Edit Fields').item.json.telefono }}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.memoryRedisChat",
+      "typeVersion": 1.5,
+      "position": [
+        0,
+        272
+      ],
+      "id": "f123037e-6ca6-452f-85f5-6eda8ccda704",
+      "name": "Redis Chat Memory",
+      "credentials": {
+        "redis": {
+          "id": "jJISBg7GRAucstR7",
+          "name": "Redis account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://evolution-api:8080/message/sendText/Jefferson",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "apikey",
+              "value": "MiClaveSecreta2026XYZ"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"number\": \"{{ $json.telefono }}\",\n  \"text\": \"{{ $json.texto }}\"\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        592,
+        16
+      ],
+      "id": "97097f82-3350-4671-bf82-65a46de66666",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Usa esta herramienta para obtener la lista de servicios disponibles \nque ofrece la empresa. Llámala cuando el usuario pregunte qué \nservicios hay, precios, o disponibilidad.",
+        "documentId": {
+          "__rl": true,
+          "value": "https://docs.google.com/spreadsheets/d/1pfaOsE9rjd9PHStqX1ogg8pn2kG3anLbThy6fs7vSBA/edit?gid=0#gid=0",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "servicios_disponibles",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1pfaOsE9rjd9PHStqX1ogg8pn2kG3anLbThy6fs7vSBA/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheetsTool",
+      "typeVersion": 4.7,
+      "position": [
+        160,
+        240
+      ],
+      "id": "814df77d-cfe7-4c19-ad0e-72df6a730534",
+      "name": "Get row(s) in sheet in Google Sheets",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "CWfYCC0u1dEbqF3V",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// FILTRO AVANZADO PARA EVOLUTION API + n8n\n// ============================================\n\nconst output = $input.first().json.output || \"\";\nconst telefono = $('Edit Fields').first().json.telefono || \"\";\nconst nombre = $('Edit Fields').first().json.nombre || \"\";\n\n// 1. Limpiar caracteres problemáticos para JSON\nlet textoLimpio = output\n  .replace(/\\\\/g, '\\\\\\\\')\n  .replace(/\"/g, '\\\\\"')\n  .replace(/\\n/g, '\\\\n')\n  .replace(/\\r/g, '')\n  .replace(/\\t/g, ' ')\n  .replace(/[\\u0000-\\u001F\\u007F-\\u009F]/g, '')\n  .trim();\n\n// 2. Validar teléfono — CORREGIDO\n// Mantiene números, @, punto, guion, letras (para @s.whatsapp.net)\nconst telefonoLimpio = telefono\n  .replace(/[^0-9@.\\-a-zA-Z]/g, '')\n  .trim();\n\n// 3. Verificar que hay contenido para enviar\nif (!textoLimpio || textoLimpio.length === 0) {\n  textoLimpio = \"Lo siento, no pude procesar tu solicitud. Por favor intenta de nuevo 🙏\";\n}\n\n// 4. Verificar que el teléfono es válido\nif (!telefonoLimpio || telefonoLimpio.length === 0) {\n  throw new Error(\"Teléfono inválido o vacío\");\n}\n\n// 5. Limitar longitud máxima WhatsApp\nif (textoLimpio.length > 4000) {\n  textoLimpio = textoLimpio.substring(0, 3997) + \"...\";\n}\n\n// 6. Log para debugging en n8n\nconsole.log(\"Teléfono:\", telefonoLimpio);\nconsole.log(\"Texto length:\", textoLimpio.length);\n\nreturn [{\n  json: {\n    telefono: telefonoLimpio,\n    texto: textoLimpio,\n    nombre: nombre\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        352,
+        32
+      ],
+      "id": "d04424e0-f52c-4c54-a03e-c8daca09824f",
+      "name": "Code in JavaScript"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Groq Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Redis Chat Memory": {
+      "ai_memory": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_memory",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Code in JavaScript",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet in Google Sheets": {
+      "ai_tool": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code in JavaScript": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "27b223dc-e14a-49e9-9600-6dbe1db15d79",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "04fa49b5342683f3459c11df7acab88fd9d5826423bbee4173c0a22e9e21410c"
+  },
+  "id": "ISYtJUHsONOlGskC",
+  "tags": []
+}
